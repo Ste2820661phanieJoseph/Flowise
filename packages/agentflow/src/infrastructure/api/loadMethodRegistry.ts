@@ -32,6 +32,10 @@ export interface ApiServices {
  * - `listEmbeddings` — fetches embedding models via `POST /node-load-method/agentAgentflow`
  * - `listRuntimeStateKeys` — fetches runtime state keys via `POST /node-load-method/agentAgentflow`
  * - `listCredentials` — fetches credentials filtered by `params.name` via `GET /credentials?credentialName=<name>`
+ * - `listActions` — fetches available actions for a node (e.g. Composio, MCP tools) via `POST /node-load-method/{nodeName}`;
+ *   requires `params.nodeName` and accepts optional `params.inputs` forwarded as `currentNode.inputs`
+ * - `listTables` — fetches available tables for a node (e.g. AWSDynamoDBKVStorage) via `POST /node-load-method/{nodeName}`;
+ *   requires `params.nodeName` and accepts optional `params.inputs` forwarded as `currentNode.inputs`
  *
  */
 export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: Record<string, unknown>) => Promise<unknown>> = {
@@ -62,6 +66,22 @@ export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: R
             return Promise.reject(new Error('`listCredentials` requires a string `name` parameter.'))
         }
         return apis.credentialsApi.getCredentialsByName(name)
+    },
+    listActions: (apis, params) => {
+        const nodeName = params?.nodeName
+        if (typeof nodeName !== 'string') {
+            return Promise.reject(new Error('`listActions` requires a string `nodeName` parameter.'))
+        }
+        const inputs = (params?.inputs as Record<string, unknown>) ?? {}
+        return apis.nodesApi.loadNodeMethod(nodeName, 'listActions', { currentNode: { inputs } })
+    },
+    listTables: (apis, params) => {
+        const nodeName = params?.nodeName
+        if (typeof nodeName !== 'string') {
+            return Promise.reject(new Error('`listTables` requires a string `nodeName` parameter.'))
+        }
+        const inputs = (params?.inputs as Record<string, unknown>) ?? {}
+        return apis.nodesApi.loadNodeMethod(nodeName, 'listTables', { currentNode: { inputs } })
     }
 }
 

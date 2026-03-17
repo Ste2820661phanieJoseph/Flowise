@@ -99,6 +99,66 @@ describe('loadMethodRegistry', () => {
         })
     })
 
+    describe('listActions', () => {
+        it('should call nodesApi.loadNodeMethod() with nodeName, listActions, and currentNode.inputs', async () => {
+            const mockActions = [{ name: 'GITHUB_CREATE_ISSUE', label: 'Create Issue' }]
+            ;(mockApis.nodesApi.loadNodeMethod as jest.Mock).mockResolvedValue(mockActions)
+
+            const result = await loadMethodRegistry['listActions'](mockApis, {
+                nodeName: 'composio',
+                inputs: { appName: 'github' }
+            })
+            expect(mockApis.nodesApi.loadNodeMethod).toHaveBeenCalledWith('composio', 'listActions', {
+                currentNode: { inputs: { appName: 'github' } }
+            })
+            expect(result).toEqual(mockActions)
+        })
+
+        it('should pass empty inputs when inputs param is omitted', async () => {
+            ;(mockApis.nodesApi.loadNodeMethod as jest.Mock).mockResolvedValue([])
+
+            await loadMethodRegistry['listActions'](mockApis, { nodeName: 'composio' })
+            expect(mockApis.nodesApi.loadNodeMethod).toHaveBeenCalledWith('composio', 'listActions', {
+                currentNode: { inputs: {} }
+            })
+        })
+
+        it('should reject when nodeName param is missing', async () => {
+            await expect(loadMethodRegistry['listActions'](mockApis)).rejects.toThrow(
+                '`listActions` requires a string `nodeName` parameter.'
+            )
+        })
+    })
+
+    describe('listTables', () => {
+        it('should call nodesApi.loadNodeMethod() with nodeName, listTables, and currentNode.inputs', async () => {
+            const mockTables = [{ name: 'my-table', label: 'my-table' }]
+            ;(mockApis.nodesApi.loadNodeMethod as jest.Mock).mockResolvedValue(mockTables)
+
+            const result = await loadMethodRegistry['listTables'](mockApis, {
+                nodeName: 'awsDynamoDBKVStorage',
+                inputs: { region: 'us-east-1' }
+            })
+            expect(mockApis.nodesApi.loadNodeMethod).toHaveBeenCalledWith('awsDynamoDBKVStorage', 'listTables', {
+                currentNode: { inputs: { region: 'us-east-1' } }
+            })
+            expect(result).toEqual(mockTables)
+        })
+
+        it('should pass empty inputs when inputs param is omitted', async () => {
+            ;(mockApis.nodesApi.loadNodeMethod as jest.Mock).mockResolvedValue([])
+
+            await loadMethodRegistry['listTables'](mockApis, { nodeName: 'awsDynamoDBKVStorage' })
+            expect(mockApis.nodesApi.loadNodeMethod).toHaveBeenCalledWith('awsDynamoDBKVStorage', 'listTables', {
+                currentNode: { inputs: {} }
+            })
+        })
+
+        it('should reject when nodeName param is missing', async () => {
+            await expect(loadMethodRegistry['listTables'](mockApis)).rejects.toThrow('`listTables` requires a string `nodeName` parameter.')
+        })
+    })
+
     describe('listCredentials', () => {
         it('should call credentialsApi.getCredentialsByName() with params.name', async () => {
             const mockCredentials = [{ id: '1', name: 'My Key', credentialName: 'openAIApi' }]
