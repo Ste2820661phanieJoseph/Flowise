@@ -35,10 +35,6 @@ export function useStableKeys(length: number, prefix: string): { keys: string[];
         }
         setItemKeys(nextKeys)
         effectiveKeys = nextKeys
-    } else if (effectiveKeys.length > length) {
-        const trimmed = effectiveKeys.slice(0, length)
-        setItemKeys(trimmed)
-        effectiveKeys = trimmed
     }
 
     const removeKey = useCallback((index: number) => {

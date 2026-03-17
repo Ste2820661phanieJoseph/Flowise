@@ -88,11 +88,26 @@ export const loadMethodRegistry: Record<string, (_apis: ApiServices, _params?: R
 /**
  * Looks up a load method handler by its string key.
  *
- * Returns `undefined` if no handler is registered for the given name,
- * which callers should treat as a no-op or fallback.
+ * If the key is explicitly registered, returns that handler.
+ * Otherwise returns a generic fallback that routes the call through
+ * `nodesApi.loadNodeMethod(nodeName, name, { currentNode: { inputs } })`,
+ * covering any node-specific loadMethod (e.g. `listTopics`, `listBuckets`)
+ * without requiring individual registry entries.
+ *
+ * The fallback rejects if `params.nodeName` is not provided.
  *
  * @param name - The `loadMethod` key declared on a node `InputParam`
  */
-export function getLoadMethod(name: string): ((_apis: ApiServices, _params?: Record<string, unknown>) => Promise<unknown>) | undefined {
-    return loadMethodRegistry[name]
+export function getLoadMethod(name: string): (_apis: ApiServices, _params?: Record<string, unknown>) => Promise<unknown> {
+    return (
+        loadMethodRegistry[name] ??
+        ((apis, params) => {
+            const nodeName = params?.nodeName
+            if (typeof nodeName !== 'string') {
+                return Promise.reject(new Error(`loadMethod "${name}" requires a string "nodeName" parameter.`))
+            }
+            const inputs = (params?.inputs as Record<string, unknown>) ?? {}
+            return apis.nodesApi.loadNodeMethod(nodeName, name, { currentNode: { inputs } })
+        })
+    )
 }

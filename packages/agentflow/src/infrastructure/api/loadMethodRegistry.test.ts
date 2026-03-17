@@ -190,8 +190,27 @@ describe('getLoadMethod', () => {
         expect(typeof fn).toBe('function')
     })
 
-    it('should return undefined for an unknown key', () => {
-        const fn = getLoadMethod('unknownMethod')
-        expect(fn).toBeUndefined()
+    it('should return a generic fallback function for an unregistered key', () => {
+        const fn = getLoadMethod('listTopics')
+        expect(fn).toBeDefined()
+        expect(typeof fn).toBe('function')
+    })
+
+    it('generic fallback should call nodesApi.loadNodeMethod with nodeName, the loadMethod name, and currentNode.inputs', async () => {
+        const mockTopics = [{ name: 'my-topic', label: 'my-topic' }]
+        ;(mockApis.nodesApi.loadNodeMethod as jest.Mock).mockResolvedValue(mockTopics)
+
+        const fn = getLoadMethod('listTopics')
+        const result = await fn(mockApis, { nodeName: 'awsSNS', inputs: { region: 'us-east-1' } })
+
+        expect(mockApis.nodesApi.loadNodeMethod).toHaveBeenCalledWith('awsSNS', 'listTopics', {
+            currentNode: { inputs: { region: 'us-east-1' } }
+        })
+        expect(result).toEqual(mockTopics)
+    })
+
+    it('generic fallback should reject when nodeName is missing', async () => {
+        const fn = getLoadMethod('listTopics')
+        await expect(fn(mockApis)).rejects.toThrow('loadMethod "listTopics" requires a string "nodeName" parameter.')
     })
 })
