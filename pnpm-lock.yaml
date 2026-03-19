@@ -1178,25 +1178,25 @@ importers:
         specifier: ^3.30.0
         version: 3.31.0(react@18.2.0)
       '@tiptap/extension-code-block-lowlight':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/extension-code-block@3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(highlight.js@11.11.1)(lowlight@3.3.0)
       '@tiptap/extension-mention':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(@tiptap/suggestion@2.12.0(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4))
       '@tiptap/extension-placeholder':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4(@tiptap/extensions@3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4))
       '@tiptap/markdown':
-        specifier: ^3.20.1
+        specifier: ^3.20.4
         version: 3.20.4(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)
       '@tiptap/pm':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4
       '@tiptap/react':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4(@floating-ui/dom@1.6.3)(@tiptap/core@3.20.4(@tiptap/pm@3.20.4))(@tiptap/pm@3.20.4)(@types/react-dom@18.2.21)(@types/react@18.2.65)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@tiptap/starter-kit':
-        specifier: ^3.20.3
+        specifier: ^3.20.4
         version: 3.20.4
       '@uiw/codemirror-theme-sublime':
         specifier: ^4.21.21
@@ -12465,10 +12465,6 @@ packages:
 
   fast-diff@1.3.0:
     resolution: {integrity: sha512-VxPP4NqbUjj6MaAOafWeUn2cXWLcCtljklUtZf0Ind4XQ+QPtmA0b18zZy0jIQx+ExRVCR/ZQpBmik5lXshNsw==}
-
-  fast-equals@5.0.1:
-    resolution: {integrity: sha512-WF1Wi8PwwSY7/6Kx0vKXtw8RwuSGoM1bvDaJbu7MxDlR1vovZjIAKrnzyrThgAjm6JDTu0fVgWXDlMGspodfoQ==}
-    engines: {node: '>=6.0.0'}
 
   fast-equals@5.4.0:
     resolution: {integrity: sha512-jt2DW/aNFNwke7AUd+Z+e6pz39KO5rzdbbFCg2sGafS4mk13MI7Z8O5z9cADNn5lhGODIgLwug6TZO2ctf7kcw==}
@@ -35694,8 +35690,6 @@ snapshots:
 
   fast-diff@1.3.0: {}
 
-  fast-equals@5.0.1: {}
-
   fast-equals@5.4.0: {}
 
   fast-fifo@1.3.2: {}
@@ -42237,7 +42231,7 @@ snapshots:
 
   react-smooth@4.0.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0):
     dependencies:
-      fast-equals: 5.0.1
+      fast-equals: 5.4.0
       prop-types: 15.8.1
       react: 18.2.0
       react-dom: 18.2.0(react@18.2.0)
@@ -43866,7 +43860,7 @@ snapshots:
   swr@2.2.0(react@18.2.0):
     dependencies:
       react: 18.2.0
-      use-sync-external-store: 1.2.0(react@18.2.0)
+      use-sync-external-store: 1.6.0(react@18.2.0)
 
   swrev@4.0.0: {}
 
