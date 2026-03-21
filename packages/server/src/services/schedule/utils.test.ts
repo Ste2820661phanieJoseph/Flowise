@@ -1,0 +1,526 @@
+import {
+    validateCronExpression,
+    computeNextRunAt,
+    validateVisualPickerFields,
+    buildCronFromVisualPicker,
+    resolveScheduleCron,
+    isDefaultInputValid,
+    canScheduleEnable,
+    VisualPickerInput
+} from './utils'
+
+// ─── validateCronExpression ───────────────────────────────────────────────────
+
+describe('validateCronExpression', () => {
+    describe('valid expressions', () => {
+        it('accepts wildcard every-minute expression', () => {
+            expect(validateCronExpression('* * * * *')).toEqual({ valid: true })
+        })
+
+        it('accepts specific weekday range', () => {
+            expect(validateCronExpression('0 9 * * 1-5')).toEqual({ valid: true })
+        })
+
+        it('accepts step values', () => {
+            expect(validateCronExpression('*/5 * * * *')).toEqual({ valid: true })
+        })
+
+        it('accepts comma-separated lists', () => {
+            expect(validateCronExpression('0,30 * * * *')).toEqual({ valid: true })
+        })
+
+        it('accepts 6-field cron with seconds', () => {
+            expect(validateCronExpression('0 * * * * *')).toEqual({ valid: true })
+        })
+
+        it('accepts step on a range base', () => {
+            expect(validateCronExpression('0/15 * * * *')).toEqual({ valid: true })
+        })
+
+        it('accepts day-of-week value 7 (also Sunday)', () => {
+            expect(validateCronExpression('0 0 * * 7')).toEqual({ valid: true })
+        })
+
+        it('accepts valid timezone', () => {
+            expect(validateCronExpression('0 9 * * 1-5', 'America/New_York')).toEqual({ valid: true })
+        })
+    })
+
+    describe('invalid inputs', () => {
+        it('rejects a non-string value', () => {
+            const result = validateCronExpression(null as unknown as string)
+            expect(result.valid).toBe(false)
+            expect(result.error).toBeDefined()
+        })
+
+        it('rejects an empty string', () => {
+            const result = validateCronExpression('')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects too few fields (4 fields)', () => {
+            const result = validateCronExpression('* * * *')
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/5 fields/)
+        })
+
+        it('rejects too many fields (7 fields)', () => {
+            const result = validateCronExpression('0 0 0 * * * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects minute value > 59', () => {
+            const result = validateCronExpression('60 * * * *')
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/position 1/)
+        })
+
+        it('rejects hour value > 23', () => {
+            const result = validateCronExpression('0 24 * * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects day-of-month value 0', () => {
+            const result = validateCronExpression('0 0 0 * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects month value 0', () => {
+            const result = validateCronExpression('0 0 * 0 *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects inverted range (start > end)', () => {
+            const result = validateCronExpression('0 0 * * 5-1')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects step value of 0', () => {
+            const result = validateCronExpression('*/0 * * * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects non-numeric step', () => {
+            const result = validateCronExpression('*/x * * * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects trailing comma in field', () => {
+            const result = validateCronExpression('1, * * * *')
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects an invalid timezone', () => {
+            const result = validateCronExpression('* * * * *', 'Invalid/Timezone')
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Invalid timezone/)
+        })
+    })
+})
+
+// ─── computeNextRunAt ─────────────────────────────────────────────────────────
+
+describe('computeNextRunAt', () => {
+    it('returns a Date in the future for every-minute cron', () => {
+        const now = new Date()
+        const next = computeNextRunAt('* * * * *', 'UTC', now)
+        expect(next).not.toBeNull()
+        expect(next!.getTime()).toBeGreaterThan(now.getTime())
+    })
+
+    it('returns a date at least 1 minute after the provided reference', () => {
+        const ref = new Date('2025-01-01T12:00:00Z')
+        const next = computeNextRunAt('* * * * *', 'UTC', ref)
+        expect(next!.getTime()).toBeGreaterThanOrEqual(ref.getTime() + 60_000)
+    })
+
+    it('finds the next occurrence of a specific daily cron', () => {
+        // Run at 09:00 UTC every day — provide reference at 08:00 same day
+        const ref = new Date('2025-06-15T08:00:00Z')
+        const next = computeNextRunAt('0 9 * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCHours()).toBe(9)
+        expect(next!.getUTCMinutes()).toBe(0)
+        expect(next!.getUTCDate()).toBe(15)
+    })
+
+    it('advances to the next day when target time has passed today', () => {
+        // Run at 06:00 UTC — reference is already past 06:00
+        const ref = new Date('2025-06-15T10:00:00Z')
+        const next = computeNextRunAt('0 6 * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCDate()).toBe(16)
+        expect(next!.getUTCHours()).toBe(6)
+    })
+
+    it('uses the provided timezone to compute the next run', () => {
+        // 0 9 * * * in America/New_York — find next occurrence after a UTC reference
+        const ref = new Date('2025-06-15T12:00:00Z') // 08:00 NY time
+        const next = computeNextRunAt('0 9 * * *', 'America/New_York', ref)
+        expect(next).not.toBeNull()
+        // Should fire at 09:00 NY = 13:00 UTC on June 15
+        expect(next!.getUTCHours()).toBe(13)
+        expect(next!.getUTCDate()).toBe(15)
+    })
+
+    it('returns null for an expression that never matches (e.g., Feb 31)', () => {
+        // Feb 31 never exists — this should exhaust the search window
+        const next = computeNextRunAt('0 0 31 2 *', 'UTC')
+        expect(next).toBeNull()
+    })
+
+    it('returns seconds-aligned output (seconds and ms zeroed)', () => {
+        const ref = new Date('2025-01-01T00:00:30Z')
+        const next = computeNextRunAt('* * * * *', 'UTC', ref)
+        expect(next!.getUTCSeconds()).toBe(0)
+        expect(next!.getUTCMilliseconds()).toBe(0)
+    })
+
+    it('aligns to next stepped minute for numeric-base step syntax (0/15)', () => {
+        // 0/15 * * * * fires at :00, :15, :30, :45 — reference at :07 should yield :15
+        const ref = new Date('2025-01-01T12:07:00Z')
+        const next = computeNextRunAt('0/15 * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCHours()).toBe(12)
+        expect(next!.getUTCMinutes()).toBe(15)
+        expect(next!.getUTCSeconds()).toBe(0)
+    })
+})
+
+// ─── validateVisualPickerFields ───────────────────────────────────────────────
+
+describe('validateVisualPickerFields', () => {
+    describe('common validations', () => {
+        it('rejects missing frequency', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: '' as any })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Frequency is required/)
+        })
+
+        it('rejects an unsupported frequency', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'yearly' as any })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Invalid frequency/)
+        })
+    })
+
+    describe('hourly', () => {
+        it('rejects missing scheduleOnMinute', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'hourly' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/On Minute is required/)
+        })
+
+        it('rejects empty string scheduleOnMinute', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: '' })
+            expect(result.valid).toBe(false)
+        })
+
+        it('rejects minute > 59', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: 60 })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/0 and 59/)
+        })
+
+        it('rejects minute < 0', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: -1 })
+            expect(result.valid).toBe(false)
+        })
+
+        it('accepts valid minute 0', () => {
+            expect(validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: 0 })).toEqual({ valid: true })
+        })
+
+        it('accepts valid minute 30', () => {
+            expect(validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: 30 })).toEqual({ valid: true })
+        })
+
+        it('accepts minute as a string number', () => {
+            expect(validateVisualPickerFields({ scheduleFrequency: 'hourly', scheduleOnMinute: '45' })).toEqual({ valid: true })
+        })
+    })
+
+    describe('daily', () => {
+        it('rejects missing scheduleOnTime', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'daily' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/On Time is required/)
+        })
+
+        it('rejects time in wrong format', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'daily', scheduleOnTime: '9:00' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/HH:mm/)
+        })
+
+        it('rejects invalid hour', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'daily', scheduleOnTime: '24:00' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/out-of-range/)
+        })
+
+        it('rejects invalid minute', () => {
+            const result = validateVisualPickerFields({ scheduleFrequency: 'daily', scheduleOnTime: '09:60' })
+            expect(result.valid).toBe(false)
+        })
+
+        it('accepts valid daily time', () => {
+            expect(validateVisualPickerFields({ scheduleFrequency: 'daily', scheduleOnTime: '09:30' })).toEqual({ valid: true })
+        })
+    })
+
+    describe('weekly', () => {
+        const base: VisualPickerInput = { scheduleFrequency: 'weekly', scheduleOnTime: '09:00' }
+
+        it('rejects missing scheduleOnDayOfWeek', () => {
+            const result = validateVisualPickerFields(base)
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Day of Week is required/)
+        })
+
+        it('rejects invalid day value (8)', () => {
+            const result = validateVisualPickerFields({ ...base, scheduleOnDayOfWeek: '8' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Invalid day of week/)
+        })
+
+        it('rejects day 0 (not emitted by the UI; use 7 for Sunday)', () => {
+            const result = validateVisualPickerFields({ ...base, scheduleOnDayOfWeek: '0' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Invalid day of week/)
+        })
+
+        it('accepts day 7 (Sunday)', () => {
+            expect(validateVisualPickerFields({ ...base, scheduleOnDayOfWeek: '7' })).toEqual({ valid: true })
+        })
+
+        it('accepts comma-separated days', () => {
+            expect(validateVisualPickerFields({ ...base, scheduleOnDayOfWeek: '1,3,5' })).toEqual({ valid: true })
+        })
+    })
+
+    describe('monthly', () => {
+        const base: VisualPickerInput = { scheduleFrequency: 'monthly', scheduleOnTime: '08:00' }
+
+        it('rejects missing scheduleOnDayOfMonth', () => {
+            const result = validateVisualPickerFields(base)
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Day of Month is required/)
+        })
+
+        it('rejects day of month 0', () => {
+            const result = validateVisualPickerFields({ ...base, scheduleOnDayOfMonth: '0' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/Invalid day of month/)
+        })
+
+        it('rejects day of month 32', () => {
+            const result = validateVisualPickerFields({ ...base, scheduleOnDayOfMonth: '32' })
+            expect(result.valid).toBe(false)
+        })
+
+        it('accepts valid days', () => {
+            expect(validateVisualPickerFields({ ...base, scheduleOnDayOfMonth: '1,15' })).toEqual({ valid: true })
+        })
+
+        it('accepts last day of month (31)', () => {
+            expect(validateVisualPickerFields({ ...base, scheduleOnDayOfMonth: '31' })).toEqual({ valid: true })
+        })
+    })
+})
+
+// ─── buildCronFromVisualPicker ────────────────────────────────────────────────
+
+describe('buildCronFromVisualPicker', () => {
+    it('builds hourly cron with correct minute', () => {
+        expect(buildCronFromVisualPicker({ scheduleFrequency: 'hourly', scheduleOnMinute: 30 })).toBe('30 * * * *')
+    })
+
+    it('builds daily cron at 09:30', () => {
+        expect(buildCronFromVisualPicker({ scheduleFrequency: 'daily', scheduleOnTime: '09:30' })).toBe('30 9 * * *')
+    })
+
+    it('builds daily cron at midnight (00:00)', () => {
+        expect(buildCronFromVisualPicker({ scheduleFrequency: 'daily', scheduleOnTime: '00:00' })).toBe('0 0 * * *')
+    })
+
+    it('builds weekly cron for Mon/Wed/Fri at 08:00', () => {
+        expect(buildCronFromVisualPicker({ scheduleFrequency: 'weekly', scheduleOnTime: '08:00', scheduleOnDayOfWeek: '1,3,5' })).toBe(
+            '0 8 * * 1,3,5'
+        )
+    })
+
+    it('builds monthly cron for the 1st and 15th at 09:00', () => {
+        expect(buildCronFromVisualPicker({ scheduleFrequency: 'monthly', scheduleOnTime: '09:00', scheduleOnDayOfMonth: '1,15' })).toBe(
+            '0 9 1,15 * *'
+        )
+    })
+
+    it('throws for an unsupported frequency', () => {
+        expect(() => buildCronFromVisualPicker({ scheduleFrequency: 'yearly' as any })).toThrow(/Unsupported frequency/)
+    })
+})
+
+// ─── resolveScheduleCron ──────────────────────────────────────────────────────
+
+describe('resolveScheduleCron', () => {
+    describe('cronExpression type (default)', () => {
+        it('returns valid cron when expression is valid', () => {
+            const result = resolveScheduleCron({ scheduleCronExpression: '0 9 * * 1-5' })
+            expect(result).toEqual({ valid: true, cronExpression: '0 9 * * 1-5' })
+        })
+
+        it('defaults to cronExpression type when scheduleType is not set', () => {
+            const result = resolveScheduleCron({ scheduleCronExpression: '* * * * *' })
+            expect(result.valid).toBe(true)
+            expect(result.cronExpression).toBe('* * * * *')
+        })
+
+        it('returns invalid when cron expression is invalid', () => {
+            const result = resolveScheduleCron({ scheduleCronExpression: 'not-a-cron' })
+            expect(result.valid).toBe(false)
+            expect(result.error).toBeDefined()
+        })
+
+        it('validates timezone from inputs', () => {
+            const result = resolveScheduleCron({
+                scheduleCronExpression: '0 9 * * *',
+                scheduleTimezone: 'Invalid/Zone'
+            })
+            expect(result.valid).toBe(false)
+        })
+    })
+
+    describe('visualPicker type', () => {
+        it('converts valid visual picker to cron expression', () => {
+            const result = resolveScheduleCron({
+                scheduleType: 'visualPicker',
+                scheduleFrequency: 'daily',
+                scheduleOnTime: '09:00',
+                scheduleTimezone: 'UTC'
+            })
+            expect(result.valid).toBe(true)
+            expect(result.cronExpression).toBe('0 9 * * *')
+        })
+
+        it('returns invalid when visual picker fields are invalid', () => {
+            const result = resolveScheduleCron({
+                scheduleType: 'visualPicker',
+                scheduleFrequency: 'hourly'
+                // missing scheduleOnMinute
+            })
+            expect(result.valid).toBe(false)
+            expect(result.error).toBeDefined()
+        })
+
+        it('propagates timezone to cron validation', () => {
+            const result = resolveScheduleCron({
+                scheduleType: 'visualPicker',
+                scheduleFrequency: 'daily',
+                scheduleOnTime: '09:00',
+                scheduleTimezone: 'Asia/Tokyo'
+            })
+            expect(result.valid).toBe(true)
+        })
+    })
+})
+
+// ─── isDefaultInputValid ──────────────────────────────────────────────────────
+
+describe('isDefaultInputValid', () => {
+    it('returns false for undefined', () => {
+        expect(isDefaultInputValid(undefined)).toBe(false)
+    })
+
+    it('returns false for empty string', () => {
+        expect(isDefaultInputValid('')).toBe(false)
+    })
+
+    it('returns false for rich-text empty value', () => {
+        expect(isDefaultInputValid('<p></p>')).toBe(false)
+    })
+
+    it('returns true for a non-empty string', () => {
+        expect(isDefaultInputValid('Hello from scheduler')).toBe(true)
+    })
+
+    it('returns true for a whitespace-only non-empty string', () => {
+        // The check only tests truthiness and the specific empty rich-text value
+        expect(isDefaultInputValid('   ')).toBe(true)
+    })
+})
+
+// ─── canScheduleEnable ────────────────────────────────────────────────────────
+
+describe('canScheduleEnable', () => {
+    const futureDate = new Date(Date.now() + 1000 * 60 * 60 * 24 * 30).toISOString() // 30 days from now
+    const pastDate = new Date(Date.now() - 1000 * 60 * 60).toISOString() // 1 hour ago
+
+    it('returns false when cron expression is invalid', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: 'bad-cron',
+                scheduleDefaultInput: 'hello',
+                scheduleEndDate: futureDate
+            })
+        ).toBe(false)
+    })
+
+    it('returns false when end date is in the past', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: '* * * * *',
+                scheduleDefaultInput: 'hello',
+                scheduleEndDate: pastDate
+            })
+        ).toBe(false)
+    })
+
+    it('returns false when default input is missing', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: '* * * * *',
+                scheduleDefaultInput: undefined
+            })
+        ).toBe(false)
+    })
+
+    it('returns false when default input is rich-text empty', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: '* * * * *',
+                scheduleDefaultInput: '<p></p>'
+            })
+        ).toBe(false)
+    })
+
+    it('returns true when all conditions are valid (no end date)', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: '0 9 * * 1-5',
+                scheduleDefaultInput: 'Generate the daily report'
+            })
+        ).toBe(true)
+    })
+
+    it('returns true when all conditions are valid with future end date', () => {
+        expect(
+            canScheduleEnable({
+                scheduleCronExpression: '0 9 * * 1-5',
+                scheduleDefaultInput: 'Generate the daily report',
+                scheduleEndDate: futureDate
+            })
+        ).toBe(true)
+    })
+
+    it('returns true for visual picker type when all fields are valid', () => {
+        expect(
+            canScheduleEnable({
+                scheduleType: 'visualPicker',
+                scheduleFrequency: 'daily',
+                scheduleOnTime: '09:00',
+                scheduleDefaultInput: 'Run daily job'
+            })
+        ).toBe(true)
+    })
+})
