@@ -14,6 +14,7 @@ export class AddScheduleEntities1772000000000 implements MigrationInterface {
                 "defaultInput" text,
                 "lastRunAt" timestamp,
                 "nextRunAt" timestamp,
+                "endDate" timestamp,
                 "workspaceId" varchar NOT NULL,
                 "createdDate" timestamp NOT NULL DEFAULT now(),
                 "updatedDate" timestamp NOT NULL DEFAULT now(),

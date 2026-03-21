@@ -14,6 +14,7 @@ export class AddScheduleEntities1772000000000 implements MigrationInterface {
                 \`defaultInput\` text,
                 \`lastRunAt\` datetime(6),
                 \`nextRunAt\` datetime(6),
+                \`endDate\` datetime(6),
                 \`workspaceId\` varchar(255) NOT NULL,
                 \`createdDate\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                 \`updatedDate\` datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),

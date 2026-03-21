@@ -40,4 +40,12 @@ router.get(
     chatflowsController.checkIfChatflowHasChanged
 )
 
+// SCHEDULE
+router.get(
+    '/:id/schedule/status',
+    checkAnyPermission('chatflows:view,chatflows:update,agentflows:view,agentflows:update'),
+    chatflowsController.getScheduleStatus
+)
+router.patch('/:id/schedule/enabled', checkAnyPermission('chatflows:update,agentflows:update'), chatflowsController.toggleScheduleEnabled)
+
 export default router

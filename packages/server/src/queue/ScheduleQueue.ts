@@ -1,12 +1,7 @@
 import { RedisOptions, RepeatOptions } from 'bullmq'
 import { BaseQueue } from './BaseQueue'
-import { executeAgentFlow } from '../utils/buildAgentflow'
-import { ScheduleRecord, ScheduleTriggerType } from '../database/entities/ScheduleRecord'
-import { ScheduleTriggerStatus } from '../database/entities/ScheduleTriggerLog'
-import scheduleService from '../services/schedule'
-import { IComponentNodes, IncomingAgentflowInput } from '../Interface'
-import { ChatFlow } from '../database/entities/ChatFlow'
-import { v4 as uuidv4 } from 'uuid'
+import { ScheduleRecord } from '../database/entities/ScheduleRecord'
+import { IComponentNodes } from '../Interface'
 import logger from '../utils/logger'
 import { IScheduleAgentflowJobData } from '../Interface.Schedule'
 import { DataSource } from 'typeorm'
@@ -14,6 +9,7 @@ import { Telemetry } from '../utils/telemetry'
 import { CachePool } from '../CachePool'
 import { UsageCacheManager } from '../UsageCacheManager'
 import { RedisEventPublisher } from './RedisEventPublisher'
+import { executeScheduleJob } from './ScheduleExecutor'
 
 interface ScheduleQueueOptions {
     appDataSource: DataSource
@@ -69,98 +65,27 @@ export class ScheduleQueue extends BaseQueue {
         if (this.usageCacheManager) data.usageCacheManager = this.usageCacheManager
         if (this.componentNodes) data.componentNodes = this.componentNodes
 
-        const { scheduleRecordId, targetId, defaultInput, workspaceId } = data
-        // Compute the effective scheduled time at execution to avoid reusing
-        // a stale timestamp baked into the repeatable job payload.
-        const scheduledAtDate = new Date()
-        const startTime = Date.now()
+        const { scheduleRecordId } = data
 
-        const scheduleRecord = await this.appDataSource.getRepository(ScheduleRecord).findOneBy({ id: scheduleRecordId })
-        if (!scheduleRecord) {
-            logger.error(`[ScheduleQueue]: Schedule record ${scheduleRecordId} not found, skipping job`)
-            return
-        }
-        if (!scheduleRecord.enabled) {
-            logger.debug(`[ScheduleQueue]: Schedule record ${scheduleRecordId} is disabled, skipping job`)
-            return
-        }
-
-        // Create an initial log entry
-        const log = await scheduleService.createTriggerLog({
+        const ctx = {
             appDataSource: this.appDataSource,
-            scheduleRecordId,
-            triggerType: scheduleRecord.triggerType ?? ScheduleTriggerType.AGENTFLOW,
-            targetId,
-            status: ScheduleTriggerStatus.RUNNING,
-            scheduledAt: scheduledAtDate,
-            workspaceId
-        })
-
-        try {
-            // Load the chatflow
-            const chatflow = await this.appDataSource.getRepository(ChatFlow).findOneBy({ id: targetId })
-            if (!chatflow) {
-                throw new Error(`ChatFlow ${targetId} not found`)
-            }
-            if (chatflow.type !== 'AGENTFLOW') {
-                throw new Error(`ChatFlow ${targetId} is not of type AGENTFLOW`)
-            }
-
-            // Build minimal IncomingAgentflowInput
-            const chatId = uuidv4()
-            const incomingInput: IncomingAgentflowInput = {
-                question: defaultInput || '',
-                chatId,
-                streaming: false
-            }
-
-            const result = await executeAgentFlow({
-                componentNodes: this.componentNodes,
-                incomingInput,
-                chatflow,
-                chatId,
-                appDataSource: this.appDataSource,
-                telemetry: this.telemetry,
-                cachePool: this.cachePool,
-                usageCacheManager: this.usageCacheManager,
-                sseStreamer: this.redisPublisher,
-                baseURL: '',
-                isInternal: true,
-                uploadedFilesContent: '',
-                fileUploads: [],
-                isTool: true, // suppresses SSE streaming
-                workspaceId: chatflow.workspaceId ?? workspaceId,
-                orgId: '',
-                subscriptionId: '',
-                productId: ''
-            })
-
-            const elapsedTimeMs = Date.now() - startTime
-            const executionId: string | undefined =
-                result && typeof result === 'object' && 'executionId' in result ? (result as any).executionId : undefined
-
-            await scheduleService.updateTriggerLog(this.appDataSource, log.id, {
-                status: ScheduleTriggerStatus.SUCCEEDED,
-                elapsedTimeMs,
-                executionId
-            })
-
-            await scheduleService.updateLastRunAt(this.appDataSource, scheduleRecordId, new Date())
-            logger.debug(`[ScheduleQueue]: Completed job for schedule ${scheduleRecordId} (${elapsedTimeMs}ms)`)
-            return result
-        } catch (error) {
-            const elapsedTimeMs = Date.now() - startTime
-            const errMsg = error instanceof Error ? error.message : String(error)
-            logger.error(`[ScheduleQueue]: Job failed for schedule ${scheduleRecordId}: ${errMsg}`)
-
-            await scheduleService.updateTriggerLog(this.appDataSource, log.id, {
-                status: ScheduleTriggerStatus.FAILED,
-                elapsedTimeMs,
-                error: errMsg
-            })
-
-            throw error
+            componentNodes: this.componentNodes,
+            telemetry: this.telemetry,
+            cachePool: this.cachePool,
+            usageCacheManager: this.usageCacheManager,
+            sseStreamer: this.redisPublisher
         }
+
+        return executeScheduleJob(ctx, scheduleRecordId, {
+            onRecordNotFoundOrDisabled: async () => {
+                await this.removeJobScheduler(scheduleRecordId)
+            },
+            onRecordExpiredOrInvalid: async (record) => {
+                record.enabled = false
+                await this.appDataSource.getRepository(ScheduleRecord).save(record)
+                await this.removeJobScheduler(scheduleRecordId)
+            }
+        })
     }
 
     /**
@@ -188,7 +113,7 @@ export class ScheduleQueue extends BaseQueue {
             data: jobData
         })
 
-        logger.info(`[ScheduleQueue]: Registered repeatable job for schedule ${record.id} (${record.cronExpression})`)
+        logger.debug(`[ScheduleQueue]: Registered repeatable job for schedule ${record.id} (${record.cronExpression})`)
     }
 
     /**
@@ -197,7 +122,7 @@ export class ScheduleQueue extends BaseQueue {
     public async removeJobScheduler(scheduleRecordId: string): Promise<void> {
         try {
             await this.queue.removeJobScheduler(`schedule:${scheduleRecordId}`)
-            logger.info(`[ScheduleQueue]: Removed repeatable job for schedule ${scheduleRecordId}`)
+            logger.debug(`[ScheduleQueue]: Removed repeatable job for schedule ${scheduleRecordId}`)
         } catch (error) {
             logger.warn(`[ScheduleQueue]: Could not remove repeatable job for schedule ${scheduleRecordId}: ${error}`)
         }

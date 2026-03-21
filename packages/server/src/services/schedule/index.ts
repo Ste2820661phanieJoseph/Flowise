@@ -2,6 +2,7 @@ import { StatusCodes } from 'http-status-codes'
 import { v4 as uuidv4 } from 'uuid'
 import { ScheduleRecord, ScheduleTriggerType } from '../../database/entities/ScheduleRecord'
 import { ScheduleTriggerLog, ScheduleTriggerStatus } from '../../database/entities/ScheduleTriggerLog'
+import { ChatFlow } from '../../database/entities/ChatFlow'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
@@ -16,6 +17,7 @@ export interface CreateScheduleInput {
     timezone?: string
     enabled?: boolean
     defaultInput?: string
+    endDate?: Date
     workspaceId: string
 }
 
@@ -24,7 +26,20 @@ export interface UpdateScheduleInput {
     timezone?: string
     enabled?: boolean
     defaultInput?: string
+    endDate?: Date | null
 }
+
+/**
+ * A fallback cron expression used when the provided one is invalid,
+ * to prevent the schedule from being deleted and to allow users
+ * to fix the cron expression without losing the schedule record.
+ * The beat will skip execution if it detects this fallback expression, and will log an error for visibility.
+ */
+const FALLBACK_CRON_EXPRESSION = '0 0 * * *' // daily at midnight UTC
+const FALLBACK_TIMEZONE = 'UTC'
+
+/* Schedule batch size for processing schedules in batches */
+const SCHEDULE_BATCH_SIZE = 100
 
 /**
  * Validates a cron expression and returns parsed info.
@@ -117,10 +132,9 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
         const appServer = getRunningExpressApp()
         const repo = appServer.AppDataSource.getRepository(ScheduleRecord)
 
-        const validation = validateCronExpression(input.cronExpression, input.timezone ?? 'UTC')
-        if (!validation.valid) {
-            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, validation.error!)
-        }
+        const validation = validateCronExpression(input.cronExpression, input.timezone ?? FALLBACK_TIMEZONE)
+        const cronExpression = validation.valid ? input.cronExpression : FALLBACK_CRON_EXPRESSION
+        const timezone = validation.valid ? input.timezone ?? FALLBACK_TIMEZONE : FALLBACK_TIMEZONE
 
         // Upsert: find existing record for this target + triggerType
         let existing = await repo.findOne({
@@ -132,11 +146,13 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
         })
 
         if (existing) {
-            existing.cronExpression = input.cronExpression
-            existing.timezone = input.timezone ?? 'UTC'
+            existing.cronExpression = cronExpression
+            existing.timezone = timezone
             if (input.enabled !== undefined) existing.enabled = input.enabled
             if (input.defaultInput !== undefined) existing.defaultInput = input.defaultInput
             if (input.nodeId !== undefined) existing.nodeId = input.nodeId
+            existing.endDate = input.endDate ?? null
+            existing.nextRunAt = computeNextRunAt(cronExpression, timezone) ?? null
             const saved = await repo.save(existing)
             logger.debug(`[ScheduleService]: Updated schedule ${saved.id} for ${input.triggerType}:${input.targetId}`)
             return saved
@@ -147,10 +163,12 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
             triggerType: input.triggerType,
             targetId: input.targetId,
             nodeId: input.nodeId,
-            cronExpression: input.cronExpression,
-            timezone: input.timezone ?? 'UTC',
-            enabled: input.enabled !== undefined ? input.enabled : true,
+            cronExpression: cronExpression,
+            timezone: timezone,
+            enabled: input.enabled !== undefined ? input.enabled : validation.valid, // default to enabled if valid, disabled if invalid
             defaultInput: input.defaultInput,
+            endDate: input.endDate,
+            nextRunAt: computeNextRunAt(cronExpression, timezone) ?? undefined,
             workspaceId: input.workspaceId
         })
 
@@ -166,7 +184,11 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
     }
 }
 
-const disableSchedulesForTarget = async (
+/**
+ * Deletes the schedule record for a given target and trigger type.
+ * NOTE: The log should be retained for historical/audit purposes, even if the schedule is deleted.
+ */
+const deleteScheduleForTarget = async (
     targetId: string,
     triggerType: ScheduleTriggerType,
     workspaceId: string
@@ -176,37 +198,264 @@ const disableSchedulesForTarget = async (
         const repo = appServer.AppDataSource.getRepository(ScheduleRecord)
         const record = await repo.findOne({ where: { targetId, triggerType, workspaceId } })
         if (!record) return
-        record.enabled = false
-        await repo.save(record)
-        logger.debug(`[ScheduleService]: Disabled schedule for ${triggerType}:${targetId}`)
+        await repo.delete(record.id)
+        logger.debug(`[ScheduleService]: Deleted schedule for ${triggerType}:${targetId}`)
         return record
     } catch (error) {
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: scheduleService.disableSchedulesForTarget - ${getErrorMessage(error)}`
+            `Error: scheduleService.deleteScheduleForTarget - ${getErrorMessage(error)}`
         )
     }
 }
 
-const getAllEnabledSchedules = async (): Promise<ScheduleRecord[]> => {
+const getEnabledSchedulesBatch = async (skip: number = 0, take: number = SCHEDULE_BATCH_SIZE): Promise<ScheduleRecord[]> => {
     try {
         const appServer = getRunningExpressApp()
         return await appServer.AppDataSource.getRepository(ScheduleRecord).find({
-            where: { enabled: true }
+            where: { enabled: true },
+            order: { createdDate: 'ASC' },
+            skip,
+            take
         })
     } catch (error) {
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
-            `Error: scheduleService.getAllEnabledSchedules - ${getErrorMessage(error)}`
+            `Error: scheduleService.getEnabledSchedulesBatch - ${getErrorMessage(error)}`
         )
     }
 }
 
-const updateLastRunAt = async (appDataSource: DataSource, scheduleRecordId: string, lastRunAt: Date): Promise<void> => {
+// ---------------------------------------------------------------------------
+// Cron field helpers (used by computeNextRunAt)
+// ---------------------------------------------------------------------------
+function _matchCronField(field: string, value: number, min: number): boolean {
+    if (field === '*') return true
+    for (const part of field.split(',')) {
+        if (part.includes('/')) {
+            const [rangeStr, stepStr] = part.split('/')
+            const step = parseInt(stepStr, 10)
+            if (isNaN(step)) continue
+            if (rangeStr === '*') {
+                if ((value - min) % step === 0) return true
+            } else if (rangeStr.includes('-')) {
+                const [start, end] = rangeStr.split('-').map(Number)
+                if (value >= start && value <= end && (value - start) % step === 0) return true
+            } else {
+                if (value === parseInt(rangeStr, 10)) return true
+            }
+        } else if (part.includes('-')) {
+            const [start, end] = part.split('-').map(Number)
+            if (value >= start && value <= end) return true
+        } else {
+            if (value === parseInt(part, 10)) return true
+        }
+    }
+    return false
+}
+
+interface _ParsedCronFields {
+    minuteField: string
+    hourField: string
+    domField: string
+    monthField: string
+    dowField: string
+}
+
+/** Parse a cron expression once so fields can be reused across many date checks. */
+function _parseCronFields(expression: string): _ParsedCronFields {
+    const fields = expression.trim().split(/\s+/)
+    const offset = fields.length === 6 ? 1 : 0
+    return {
+        minuteField: fields[0 + offset],
+        hourField: fields[1 + offset],
+        domField: fields[2 + offset],
+        monthField: fields[3 + offset],
+        dowField: fields[4 + offset]
+    }
+}
+
+/**
+ * Check whether a pre-parsed cron matches `date`, using a pre-built Intl.DateTimeFormat for TZ conversion.
+ * Both `parsed` and `fmt` should be created once outside any hot loop.
+ */
+function _cronMatchesParsed(parsed: _ParsedCronFields, date: Date, fmt: Intl.DateTimeFormat): boolean {
+    let minute: number, hour: number, dom: number, month: number, dow: number
     try {
-        await appDataSource.getRepository(ScheduleRecord).update({ id: scheduleRecordId }, { lastRunAt })
+        const parts = fmt.formatToParts(date)
+        const get = (type: string) => parseInt(parts.find((p) => p.type === type)?.value ?? '0', 10)
+        const weekdayStr = parts.find((p) => p.type === 'weekday')?.value ?? 'Sun'
+        minute = get('minute')
+        hour = get('hour') % 24
+        dom = get('day')
+        month = get('month')
+        dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(weekdayStr)
+        if (dow === -1) dow = date.getUTCDay()
+    } catch {
+        minute = date.getUTCMinutes()
+        hour = date.getUTCHours()
+        dom = date.getUTCDate()
+        month = date.getUTCMonth() + 1
+        dow = date.getUTCDay()
+    }
+    const dowMatches = _matchCronField(parsed.dowField, dow, 0) || (dow === 0 && _matchCronField(parsed.dowField, 7, 0))
+    return (
+        _matchCronField(parsed.minuteField, minute, 0) &&
+        _matchCronField(parsed.hourField, hour, 0) &&
+        _matchCronField(parsed.domField, dom, 1) &&
+        _matchCronField(parsed.monthField, month, 1) &&
+        dowMatches
+    )
+}
+
+/**
+ * Computes the next Date after `after` (defaults to now) when the cron expression will fire.
+ * Searches minute-by-minute, up to 1 year ahead. Returns null if no match is found.
+ *
+ * The Intl.DateTimeFormat instance and parsed cron fields are created once before the loop
+ * to avoid repeated allocations on every iteration.
+ */
+export const computeNextRunAt = (cronExpression: string, timezone: string = 'UTC', after?: Date): Date | null => {
+    const start = new Date(after ? after.getTime() : Date.now())
+    // Snap to start of next minute so we never return the current minute
+    start.setSeconds(0, 0)
+    start.setMinutes(start.getMinutes() + 1)
+
+    // Hoist allocations outside the loop
+    const parsed = _parseCronFields(cronExpression)
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        weekday: 'short',
+        hour12: false
+    })
+
+    const maxIterations = 60 * 24 * 366 // up to ~1 year of minutes
+    for (let i = 0; i < maxIterations; i++) {
+        const candidate = new Date(start.getTime() + i * 60_000)
+        if (_cronMatchesParsed(parsed, candidate, fmt)) {
+            return candidate
+        }
+    }
+    return null
+}
+
+const updateScheduleAfterRun = async (
+    appDataSource: DataSource,
+    scheduleRecordId: string,
+    cronExpression: string,
+    timezone: string = 'UTC'
+): Promise<void> => {
+    try {
+        const lastRunAt = new Date()
+        const nextRunAt = computeNextRunAt(cronExpression, timezone, lastRunAt) ?? undefined
+        await appDataSource.getRepository(ScheduleRecord).update({ id: scheduleRecordId }, { lastRunAt, nextRunAt })
     } catch (error) {
-        logger.error(`[ScheduleService]: updateLastRunAt failed for ${scheduleRecordId}: ${getErrorMessage(error)}`)
+        logger.error(`[ScheduleService]: updateScheduleAfterRun failed for ${scheduleRecordId}: ${getErrorMessage(error)}`)
+    }
+}
+
+/**
+ * Returns the current schedule record and whether it can be enabled,
+ * validated against the live flowData (not the stored cron which may be a fallback).
+ */
+const getScheduleStatus = async (
+    targetId: string,
+    workspaceId: string
+): Promise<{ record: ScheduleRecord | null; canEnable: boolean; reason?: string }> => {
+    try {
+        const appServer = getRunningExpressApp()
+        const record = await appServer.AppDataSource.getRepository(ScheduleRecord).findOne({
+            where: { targetId, triggerType: ScheduleTriggerType.AGENTFLOW, workspaceId }
+        })
+
+        const chatflow = await appServer.AppDataSource.getRepository(ChatFlow).findOne({
+            where: { id: targetId, workspaceId }
+        })
+        if (!chatflow?.flowData) {
+            return { record, canEnable: false, reason: 'Flow not found or has no data' }
+        }
+
+        try {
+            const parsedFlowData = JSON.parse(chatflow.flowData)
+            const startNode = (parsedFlowData.nodes || []).find((n: any) => n.data?.name === 'startAgentflow')
+            if (!startNode || startNode.data?.inputs?.startInputType !== 'scheduleInput') {
+                return { record, canEnable: false, reason: 'Flow is not configured as a scheduled flow' }
+            }
+
+            const inputs = startNode.data.inputs as Record<string, any>
+            const cronResult = resolveScheduleCron(inputs)
+            if (!cronResult.valid) {
+                return { record, canEnable: false, reason: cronResult.error || 'Invalid cron expression or timezone' }
+            }
+
+            // endDate must be in the future if set
+            const endDateValue = inputs.scheduleEndDate || record?.endDate
+            if (endDateValue) {
+                const endDate = new Date(endDateValue)
+                if (isNaN(endDate.getTime())) {
+                    return { record, canEnable: false, reason: 'Invalid end date' }
+                }
+                if (endDate <= new Date()) {
+                    return { record, canEnable: false, reason: 'End date is in the past' }
+                }
+            }
+
+            // defaultInput is required for cron-based schedules since there is no user to provide a question at runtime
+            const isDefaultInputValidResult = isDefaultInputValid(inputs.scheduleDefaultInput ?? record?.defaultInput)
+            if (!isDefaultInputValidResult) {
+                return { record, canEnable: false, reason: 'Default input is required to enable schedule' }
+            }
+
+            return { record, canEnable: true }
+        } catch {
+            return { record, canEnable: false, reason: 'Could not parse flow data' }
+        }
+    } catch (error) {
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: scheduleService.getScheduleStatus - ${getErrorMessage(error)}`
+        )
+    }
+}
+
+/**
+ * Toggles the enabled state of a schedule record.
+ * When enabling, validates the schedule config first.
+ * Caller is responsible for notifying ScheduleBeat after this returns.
+ */
+const toggleScheduleEnabled = async (targetId: string, workspaceId: string, enabled: boolean): Promise<ScheduleRecord> => {
+    try {
+        const appServer = getRunningExpressApp()
+        const repo = appServer.AppDataSource.getRepository(ScheduleRecord)
+        const record = await repo.findOne({
+            where: { targetId, triggerType: ScheduleTriggerType.AGENTFLOW, workspaceId }
+        })
+        if (!record) {
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, 'No schedule record found for this flow')
+        }
+
+        if (enabled) {
+            const status = await getScheduleStatus(targetId, workspaceId)
+            if (!status.canEnable) {
+                throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, status.reason || 'Cannot enable schedule: invalid configuration')
+            }
+        }
+
+        record.enabled = enabled
+        const saved = await repo.save(record)
+        logger.debug(`[ScheduleService]: Schedule ${record.id} toggled to ${enabled ? 'enabled' : 'disabled'}`)
+        return saved
+    } catch (error) {
+        if (error instanceof InternalFlowiseError) throw error
+        throw new InternalFlowiseError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            `Error: scheduleService.toggleScheduleEnabled - ${getErrorMessage(error)}`
+        )
     }
 }
 
@@ -398,15 +647,39 @@ export const resolveScheduleCron = (inputs: Record<string, any>): { valid: boole
     return { valid: true, cronExpression: expression }
 }
 
+/**
+ * Checks if the schedule can be enabled based on its inputs.
+ * It is used to determine the initial enabled state when creating/updating a schedule, and also to validate when toggling enabled state.
+ * Besides, the worker skips execution of schedules that are not valid.
+ */
+export const isDefaultInputValid = (defaultInput: string | undefined): boolean => {
+    return !!defaultInput && defaultInput !== '<p></p>' // rich text empty value
+}
+
+/**
+ * Determines if a schedule can be enabled based on its inputs, including the cron expression, end date, and default input.
+ */
+export const canScheduleEnable = (inputs: Record<string, any>): boolean => {
+    const cronResult = resolveScheduleCron(inputs)
+    const isEndDateValid = !inputs.scheduleEndDate || new Date(inputs.scheduleEndDate) > new Date()
+    const isInputValid = isDefaultInputValid(inputs.scheduleDefaultInput)
+    return cronResult.valid && isEndDateValid && isInputValid
+}
+
 export default {
     validateCronExpression,
     validateVisualPickerFields,
     buildCronFromVisualPicker,
     resolveScheduleCron,
     createOrUpdateSchedule,
-    disableSchedulesForTarget,
-    getAllEnabledSchedules,
-    updateLastRunAt,
+    deleteScheduleForTarget,
+    getEnabledSchedulesBatch,
+    updateScheduleAfterRun,
+    computeNextRunAt,
     createTriggerLog,
-    updateTriggerLog
+    updateTriggerLog,
+    getScheduleStatus,
+    toggleScheduleEnabled,
+    isDefaultInputValid,
+    canScheduleEnable
 }

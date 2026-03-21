@@ -51,6 +51,7 @@ import DocStoreInputHandler from '@/views/docstore/DocStoreInputHandler'
 import { TimePicker } from '@/ui-component/picker/TimePicker'
 import { WeekDaysPicker } from '@/ui-component/picker/WeekDaysPicker'
 import { MonthDaysPicker } from '@/ui-component/picker/MonthDaysPicker'
+import { DatePicker } from '@/ui-component/picker/DatePicker'
 
 import ToolDialog from '@/views/tools/ToolDialog'
 import AssistantDialog from '@/views/assistants/openai/AssistantDialog'
@@ -1235,6 +1236,14 @@ const NodeInputHandler = ({
                             <MonthDaysPicker
                                 disabled={disabled}
                                 value={data.inputs[inputParam.name] ?? inputParam.default ?? ''}
+                                onChange={(newValue) => handleDataChange({ inputParam, newValue })}
+                            />
+                        )}
+                        {inputParam.type === 'datePicker' && (
+                            <DatePicker
+                                disabled={disabled}
+                                value={data.inputs[inputParam.name] ?? inputParam.default ?? ''}
+                                placeholder={inputParam.placeholder}
                                 onChange={(newValue) => handleDataChange({ inputParam, newValue })}
                             />
                         )}

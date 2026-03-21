@@ -237,6 +237,16 @@ class Start_Agentflow implements INode {
                 }
             },
             {
+                label: 'End Date',
+                name: 'scheduleEndDate',
+                type: 'datePicker',
+                description: 'Optional date after which the schedule will stop firing.',
+                optional: true,
+                show: {
+                    startInputType: 'scheduleInput'
+                }
+            },
+            {
                 label: 'Timezone',
                 name: 'scheduleTimezone',
                 type: 'string',
@@ -253,7 +263,6 @@ class Start_Agentflow implements INode {
                 type: 'string',
                 placeholder: 'Run the daily report',
                 description: 'Default question/input passed to the flow when it is triggered by the scheduler.',
-                acceptVariable: true,
                 rows: 4,
                 show: {
                     startInputType: 'scheduleInput'
@@ -352,7 +361,6 @@ class Start_Agentflow implements INode {
             const effectiveInput = (typeof input === 'string' && input) || defaultInput || ''
             inputData.question = effectiveInput
             outputData.question = effectiveInput
-            outputData.scheduledAt = options.agentflowRuntime?.scheduledAt ?? new Date().toISOString()
         }
 
         if (startEphemeralMemory) {

@@ -22,6 +22,10 @@ const getHasChatflowChanged = (id, lastUpdatedDateTime) => client.get(`/chatflow
 
 const generateAgentflow = (body) => client.post(`/agentflowv2-generator/generate`, body)
 
+const getScheduleStatus = (id) => client.get(`/chatflows/${id}/schedule/status`)
+
+const toggleScheduleEnabled = (id, enabled) => client.patch(`/chatflows/${id}/schedule/enabled`, { enabled })
+
 export default {
     getAllChatflows,
     getAllAgentflows,
@@ -33,5 +37,7 @@ export default {
     getIsChatflowStreaming,
     getAllowChatflowUploads,
     getHasChatflowChanged,
-    generateAgentflow
+    generateAgentflow,
+    getScheduleStatus,
+    toggleScheduleEnabled
 }

@@ -1,11 +1,11 @@
 import PropTypes from 'prop-types'
 import { useNavigate } from 'react-router-dom'
 import { useSelector, useDispatch } from 'react-redux'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 // material-ui
 import { useTheme } from '@mui/material/styles'
-import { Avatar, Box, ButtonBase, Typography, Stack, TextField, Button } from '@mui/material'
+import { Avatar, Box, ButtonBase, Typography, Stack, TextField, Button, Tooltip } from '@mui/material'
 
 // icons
 import { IconSettings, IconChevronLeft, IconDeviceFloppy, IconPencil, IconCheck, IconX, IconCode } from '@tabler/icons-react'
@@ -66,7 +66,24 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
     const title = isAgentCanvas ? 'Agents' : 'Chatflow'
 
     const updateChatflowApi = useApi(chatflowsApi.updateChatflow)
+    const getScheduleStatusApi = useApi(chatflowsApi.getScheduleStatus)
+    const toggleScheduleEnabledApi = useApi(chatflowsApi.toggleScheduleEnabled)
     const canvas = useSelector((state) => state.canvas)
+
+    const [scheduleEnabled, setScheduleEnabled] = useState(false)
+    const [scheduleCanEnable, setScheduleCanEnable] = useState(false)
+    const [scheduleCanEnableReason, setScheduleCanEnableReason] = useState('')
+
+    const isScheduleFlow = useMemo(() => {
+        if (!chatflow?.flowData || !isAgentflowV2) return false
+        try {
+            const parsed = JSON.parse(chatflow.flowData)
+            const startNode = (parsed.nodes || []).find((n) => n.data?.name === 'startAgentflow')
+            return startNode?.data?.inputs?.startInputType === 'scheduleInput'
+        } catch {
+            return false
+        }
+    }, [chatflow?.flowData, isAgentflowV2])
 
     const onSettingsItemClick = (setting) => {
         setSettingsOpen(false)
@@ -248,6 +265,47 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
         }
     }, [chatflow, title, chatflowConfigurationDialogOpen])
 
+    useEffect(() => {
+        if (chatflow?.id && isScheduleFlow) {
+            getScheduleStatusApi.request(chatflow.id)
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [chatflow?.id, chatflow?.updatedDate, isScheduleFlow])
+
+    useEffect(() => {
+        if (getScheduleStatusApi.data) {
+            setScheduleEnabled(getScheduleStatusApi.data.enabled ?? false)
+            setScheduleCanEnable(getScheduleStatusApi.data.canEnable ?? false)
+            setScheduleCanEnableReason(getScheduleStatusApi.data.reason || '')
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [getScheduleStatusApi.data])
+
+    useEffect(() => {
+        if (toggleScheduleEnabledApi.data) {
+            setScheduleEnabled(toggleScheduleEnabledApi.data.enabled ?? false)
+            enqueueSnackbar({
+                message: `Schedule ${toggleScheduleEnabledApi.data.enabled ? 'enabled' : 'disabled'} successfully`,
+                options: { variant: 'success' }
+            })
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [toggleScheduleEnabledApi.data])
+
+    useEffect(() => {
+        if (toggleScheduleEnabledApi.error) {
+            enqueueSnackbar({
+                message: String(toggleScheduleEnabledApi.error?.message || toggleScheduleEnabledApi.error || 'Failed to toggle schedule'),
+                options: { variant: 'error' }
+            })
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [toggleScheduleEnabledApi.error])
+
+    const handleToggleSchedule = (newEnabled) => {
+        toggleScheduleEnabledApi.request(chatflow.id, newEnabled)
+    }
+
     return (
         <>
             <Stack flexDirection='row' justifyContent='space-between' sx={{ width: '100%' }}>
@@ -388,6 +446,72 @@ const CanvasHeader = ({ chatflow, isAgentCanvas, isAgentflowV2, handleSaveFlow, 
                     </Box>
                 </Stack>
                 <Box>
+                    {chatflow?.id && isAgentflowV2 && isScheduleFlow && (
+                        <Tooltip
+                            title={
+                                scheduleEnabled
+                                    ? 'Schedule active — click to disable'
+                                    : scheduleCanEnable
+                                    ? 'Schedule inactive — click to enable'
+                                    : scheduleCanEnableReason || 'Fix the schedule configuration to enable'
+                            }
+                        >
+                            <Box
+                                sx={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    mr: 2,
+                                    gap: 0.75,
+                                    opacity: !scheduleCanEnable && !scheduleEnabled ? 0.45 : 1
+                                }}
+                            >
+                                <Typography
+                                    variant='caption'
+                                    sx={{
+                                        color: scheduleEnabled ? theme.palette.success.dark : theme.palette.text.secondary,
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    Schedule
+                                </Typography>
+                                <Box
+                                    component='span'
+                                    role='checkbox'
+                                    aria-checked={scheduleEnabled}
+                                    onClick={() => {
+                                        if (!scheduleCanEnable && !scheduleEnabled) return
+                                        handleToggleSchedule(!scheduleEnabled)
+                                    }}
+                                    sx={{
+                                        position: 'relative',
+                                        display: 'inline-block',
+                                        width: 56,
+                                        height: 32,
+                                        borderRadius: '5px',
+                                        backgroundColor: scheduleEnabled ? theme.palette.success.main : theme.palette.grey[400],
+                                        transition: 'background-color 0.2s ease-in-out',
+                                        cursor: !scheduleCanEnable && !scheduleEnabled ? 'not-allowed' : 'pointer',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    <Box
+                                        component='span'
+                                        sx={{
+                                            position: 'absolute',
+                                            top: '3px',
+                                            left: scheduleEnabled ? '27px' : '3px',
+                                            width: 26,
+                                            height: 26,
+                                            borderRadius: '3px',
+                                            backgroundColor: 'white',
+                                            transition: 'left 0.2s ease-in-out',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)'
+                                        }}
+                                    />
+                                </Box>
+                            </Box>
+                        </Tooltip>
+                    )}
                     {chatflow?.id && (
                         <ButtonBase title='API Endpoint' sx={{ borderRadius: '50%', mr: 2 }}>
                             <Avatar

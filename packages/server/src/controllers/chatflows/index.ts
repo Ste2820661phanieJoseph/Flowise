@@ -13,6 +13,8 @@ import { WorkspaceUserErrorMessage, WorkspaceUserService } from '../../enterpris
 import { QueryRunner } from 'typeorm'
 import { GeneralErrorMessage } from '../../utils/constants'
 import { sanitizeFlowDataForPublicEndpoint } from '../../utils/sanitizeFlowData'
+import scheduleService from '../../services/schedule'
+import { ScheduleBeat } from '../../queue/ScheduleBeat'
 
 const checkIfChatflowIsValidForStreaming = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -273,6 +275,54 @@ const checkIfChatflowHasChanged = async (req: Request, res: Response, next: Next
     }
 }
 
+const getScheduleStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (!req.params?.id) {
+            throw new InternalFlowiseError(
+                StatusCodes.PRECONDITION_FAILED,
+                'Error: chatflowsController.getScheduleStatus - id not provided!'
+            )
+        }
+        const workspaceId = req.user?.activeWorkspaceId
+        if (!workspaceId) {
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, 'Error: chatflowsController.getScheduleStatus - workspace not found!')
+        }
+        const status = await scheduleService.getScheduleStatus(req.params.id, workspaceId)
+        return res.json({
+            enabled: status.record?.enabled ?? false,
+            canEnable: status.canEnable,
+            reason: status.reason,
+            record: status.record
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+const toggleScheduleEnabled = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        if (!req.params?.id) {
+            throw new InternalFlowiseError(
+                StatusCodes.PRECONDITION_FAILED,
+                'Error: chatflowsController.toggleScheduleEnabled - id not provided!'
+            )
+        }
+        const workspaceId = req.user?.activeWorkspaceId
+        if (!workspaceId) {
+            throw new InternalFlowiseError(StatusCodes.NOT_FOUND, 'Error: chatflowsController.toggleScheduleEnabled - workspace not found!')
+        }
+        const { enabled } = req.body
+        if (typeof enabled !== 'boolean') {
+            throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, '"enabled" must be a boolean')
+        }
+        const record = await scheduleService.toggleScheduleEnabled(req.params.id, workspaceId, enabled)
+        await ScheduleBeat.getInstance().onScheduleChanged(record.id, enabled ? 'upsert' : 'delete')
+        return res.json(record)
+    } catch (error) {
+        next(error)
+    }
+}
+
 export default {
     checkIfChatflowIsValidForStreaming,
     checkIfChatflowIsValidForUploads,
@@ -284,5 +334,7 @@ export default {
     updateChatflow,
     getSinglePublicChatflow,
     getSinglePublicChatbotConfig,
-    checkIfChatflowHasChanged
+    checkIfChatflowHasChanged,
+    getScheduleStatus,
+    toggleScheduleEnabled
 }

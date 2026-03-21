@@ -140,7 +140,8 @@ export const initNode = (nodeData, newNodeId, isAgentflow) => {
         'conditionFunction', // This is a special type for condition functions
         'timePicker',
         'weekDaysPicker',
-        'monthDaysPicker'
+        'monthDaysPicker',
+        'datePicker'
     ]
 
     // Inputs

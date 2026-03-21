@@ -40,10 +40,14 @@ export class ScheduleRecord {
     defaultInput?: string
 
     @Column({ nullable: true, type: 'timestamp' })
-    lastRunAt?: Date
+    lastRunAt?: Date | null
 
     @Column({ nullable: true, type: 'timestamp' })
-    nextRunAt?: Date
+    nextRunAt?: Date | null
+
+    /** Optional date/time after which the schedule will no longer fire */
+    @Column({ nullable: true, type: 'timestamp' })
+    endDate?: Date | null
 
     @Column({ type: 'varchar' })
     workspaceId: string
