@@ -2,9 +2,11 @@ import { NextFunction, Request, Response } from 'express'
 import { convertTextToSpeechStream } from 'flowise-components'
 import { StatusCodes } from 'http-status-codes'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
+import { WorkspaceUserService } from '../../enterprise/services/workspace-user.service'
 import chatflowsService from '../../services/chatflows'
 import textToSpeechService from '../../services/text-to-speech'
 import { databaseEntities } from '../../utils'
+import { GeneralErrorMessage } from '../../utils/constants'
 import { getRunningExpressApp } from '../../utils/getRunningExpressApp'
 
 const generateTextToSpeech = async (req: Request, res: Response) => {
@@ -196,6 +198,25 @@ const abortTextToSpeech = async (req: Request, res: Response) => {
         }
 
         const appServer = getRunningExpressApp()
+
+        // Authorization: verify the caller has access to this chatflow
+        const chatflow = await chatflowsService.getChatflowById(chatflowId)
+        if (!chatflow.isPublic) {
+            if (!req.user) {
+                return res.status(StatusCodes.UNAUTHORIZED).json({ message: GeneralErrorMessage.UNAUTHORIZED })
+            }
+            const queryRunner = appServer.AppDataSource.createQueryRunner()
+            try {
+                const workspaceUserService = new WorkspaceUserService()
+                const workspaceUser = await workspaceUserService.readWorkspaceUserByUserId(req.user.id, queryRunner)
+                const workspaceIds = workspaceUser.map((u: any) => u.workspaceId)
+                if (!workspaceIds.includes(chatflow.workspaceId)) {
+                    return res.status(StatusCodes.FORBIDDEN).json({ message: GeneralErrorMessage.FORBIDDEN })
+                }
+            } finally {
+                await queryRunner.release()
+            }
+        }
 
         // Abort the TTS generation using existing pool
         const ttsAbortId = `tts_${chatId}_${chatMessageId}`
