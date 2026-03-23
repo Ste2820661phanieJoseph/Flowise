@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import {
     Alert,
@@ -46,6 +46,11 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
+    // Stabilize credentialNames so the effect doesn't re-fire on every render
+    // when the parent passes an inline array (e.g. credentialNames={['openAIApi']}).
+    const credentialNamesKey = credentialNames.join('\0')
+    const stableCredentialNames = useMemo(() => credentialNames, [credentialNamesKey])
+
     const selectSchema = useCallback((schema: ComponentCredentialSchema) => {
         setSelectedSchema(schema)
         setCredentialName('')
@@ -73,15 +78,17 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
             setFormValues({})
 
             try {
-                if (credentialNames.length === 1) {
-                    const schema = await credentialsApi.getComponentCredentialSchema(credentialNames[0])
+                if (stableCredentialNames.length === 1) {
+                    const schema = await credentialsApi.getComponentCredentialSchema(stableCredentialNames[0])
                     if (!cancelled) {
                         setSchemas([schema])
                         selectSchema(schema)
                     }
                 } else {
                     // Fetch each schema individually
-                    const results = await Promise.all(credentialNames.map((name) => credentialsApi.getComponentCredentialSchema(name)))
+                    const results = await Promise.all(
+                        stableCredentialNames.map((name) => credentialsApi.getComponentCredentialSchema(name))
+                    )
                     if (!cancelled) {
                         setSchemas(results)
                     }
@@ -102,7 +109,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         return () => {
             cancelled = true
         }
-    }, [open, credentialNames, credentialsApi, selectSchema])
+    }, [open, stableCredentialNames, credentialsApi, selectSchema])
 
     const handleFieldChange = useCallback((fieldName: string, value: unknown) => {
         setFormValues((prev) => ({ ...prev, [fieldName]: value }))

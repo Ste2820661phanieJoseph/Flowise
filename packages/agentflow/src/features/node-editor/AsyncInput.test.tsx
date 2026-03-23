@@ -19,6 +19,16 @@ jest.mock('@tabler/icons-react', () => ({
     IconRefresh: () => <span data-testid='icon-refresh' />
 }))
 
+jest.mock('./CreateCredentialDialog', () => ({
+    CreateCredentialDialog: ({ open, onCreated, onClose }: any) =>
+        open ? (
+            <div data-testid='create-credential-dialog'>
+                <button onClick={() => onCreated('new-cred-id')}>Create</button>
+                <button onClick={onClose}>Close</button>
+            </div>
+        ) : null
+}))
+
 interface MockAsyncResult {
     options: Array<{ label: string; name: string; imageSrc?: string; description?: string }>
     loading: boolean
@@ -416,5 +426,95 @@ describe('NodeInputHandler – asyncMultiOptions', () => {
 
         expect(screen.getByText('Tool A')).toBeTruthy()
         expect(screen.getByText('Tool B')).toBeTruthy()
+    })
+})
+
+describe('AsyncInput – Create New credential', () => {
+    it('"- Create New -" option appears when credentialNames is set', async () => {
+        mockUseAsyncOptions.mockReturnValue({
+            ...idleResult(),
+            options: [{ label: 'My API Key', name: 'cred-1' }]
+        })
+
+        render(
+            <AsyncInput
+                inputParam={makeParam({ type: 'asyncOptions', credentialNames: ['openAIApi'] })}
+                value=''
+                disabled={false}
+                onChange={jest.fn()}
+            />
+        )
+
+        fireEvent.mouseDown(screen.getByRole('combobox'))
+        await waitFor(() => {
+            expect(screen.getByText('- Create New -')).toBeTruthy()
+        })
+    })
+
+    it('"- Create New -" does NOT appear for non-credential async dropdowns', async () => {
+        mockUseAsyncOptions.mockReturnValue({
+            ...idleResult(),
+            options: [{ label: 'GPT-4o', name: 'gpt-4o' }]
+        })
+
+        render(<AsyncInput inputParam={makeParam({ type: 'asyncOptions' })} value='' disabled={false} onChange={jest.fn()} />)
+
+        fireEvent.mouseDown(screen.getByRole('combobox'))
+        await waitFor(() => {
+            expect(screen.getByText('GPT-4o')).toBeTruthy()
+        })
+        expect(screen.queryByText('- Create New -')).toBeNull()
+    })
+
+    it('selecting "- Create New -" opens CreateCredentialDialog and does not call onChange', async () => {
+        const mockChange = jest.fn()
+        mockUseAsyncOptions.mockReturnValue({
+            ...idleResult(),
+            options: [{ label: 'My API Key', name: 'cred-1' }]
+        })
+
+        render(
+            <AsyncInput
+                inputParam={makeParam({ type: 'asyncOptions', credentialNames: ['openAIApi'] })}
+                value=''
+                disabled={false}
+                onChange={mockChange}
+            />
+        )
+
+        fireEvent.mouseDown(screen.getByRole('combobox'))
+        await waitFor(() => screen.getByText('- Create New -'))
+        fireEvent.click(screen.getByText('- Create New -'))
+
+        expect(mockChange).not.toHaveBeenCalled()
+        expect(screen.getByTestId('create-credential-dialog')).toBeTruthy()
+    })
+
+    it('after credential creation, onChange is called with new ID and refetch is called', async () => {
+        const mockChange = jest.fn()
+        mockUseAsyncOptions.mockReturnValue({
+            ...idleResult(),
+            options: [{ label: 'My API Key', name: 'cred-1' }]
+        })
+
+        render(
+            <AsyncInput
+                inputParam={makeParam({ type: 'asyncOptions', credentialNames: ['openAIApi'] })}
+                value=''
+                disabled={false}
+                onChange={mockChange}
+            />
+        )
+
+        // Open dropdown and select "- Create New -"
+        fireEvent.mouseDown(screen.getByRole('combobox'))
+        await waitFor(() => screen.getByText('- Create New -'))
+        fireEvent.click(screen.getByText('- Create New -'))
+
+        // Click the Create button in the mocked dialog
+        fireEvent.click(screen.getByText('Create'))
+
+        expect(mockChange).toHaveBeenCalledWith('new-cred-id')
+        expect(mockRefetch).toHaveBeenCalledTimes(1)
     })
 })
