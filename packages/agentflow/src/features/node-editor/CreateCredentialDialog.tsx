@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 
-import { Info } from '@mui/icons-material'
 import {
     Alert,
     Box,
@@ -10,17 +9,17 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    FormControlLabel,
     IconButton,
-    MenuItem,
     OutlinedInput,
-    Select,
-    Switch,
-    Tooltip,
     Typography
 } from '@mui/material'
+import { IconAlertTriangle, IconArrowsMaximize } from '@tabler/icons-react'
 import parser from 'html-react-parser'
 
+import { Dropdown } from '@/atoms/Dropdown'
+import { JsonInput } from '@/atoms/JsonInput'
+import { SwitchInput } from '@/atoms/SwitchInput'
+import { TooltipWithParser } from '@/atoms/TooltipWithParser'
 import type { ComponentCredentialSchema, CredentialSchemaInput } from '@/core/types'
 import { getDefaultValueForType } from '@/core/utils/credentialDefaults'
 import { useApiContext } from '@/infrastructure/store/ApiContext'
@@ -266,61 +265,103 @@ interface CredentialFieldProps {
     input: CredentialSchemaInput
     value: unknown
     onChange: (value: unknown) => void
+    disabled?: boolean
 }
 
-function CredentialField({ input, value, onChange }: CredentialFieldProps) {
-    const label = (
-        <Typography>
-            {input.label}
-            {!input.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
-            {input.description && (
-                <Tooltip title={parser(input.description)} placement='right'>
-                    <IconButton sx={{ height: 15, width: 15, ml: 1, mt: -0.5 }}>
-                        <Info sx={{ height: 15, width: 15 }} />
-                    </IconButton>
-                </Tooltip>
-            )}
-        </Typography>
-    )
-
-    if (input.type === 'boolean') {
-        return (
-            <Box sx={{ p: 2 }}>
-                <FormControlLabel
-                    control={<Switch checked={Boolean(value)} onChange={(_e, checked) => onChange(checked)} />}
-                    label={label}
-                />
-            </Box>
-        )
-    }
-
-    if (input.type === 'options' && input.options) {
-        return (
-            <Box sx={{ p: 2 }}>
-                {label}
-                <Select fullWidth value={(value as string) ?? ''} onChange={(e) => onChange(e.target.value)}>
-                    {input.options.map((opt) => (
-                        <MenuItem key={opt.name} value={opt.name}>
-                            {opt.label}
-                        </MenuItem>
-                    ))}
-                </Select>
-            </Box>
-        )
-    }
+function CredentialField({ input, value, onChange, disabled = false }: CredentialFieldProps) {
+    const [expandOpen, setExpandOpen] = useState(false)
+    const showExpand = input.type === 'string' && !!input.rows
 
     return (
         <Box sx={{ p: 2 }}>
-            {label}
-            <OutlinedInput
-                fullWidth
-                type={input.type === 'password' ? 'password' : input.type === 'number' ? 'number' : 'text'}
-                multiline={input.type === 'json'}
-                rows={input.type === 'json' ? 4 : undefined}
-                placeholder={input.placeholder}
-                value={(value as string) ?? ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-            />
+            {/* Label row — always rendered */}
+            <div style={{ display: 'flex', flexDirection: 'row' }}>
+                <Typography>
+                    {input.label}
+                    {!input.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+                    {input.description && <TooltipWithParser title={input.description} />}
+                </Typography>
+                <div style={{ flexGrow: 1 }} />
+                {showExpand && (
+                    <IconButton
+                        size='small'
+                        sx={{ height: 25, width: 25 }}
+                        title='Expand'
+                        color='primary'
+                        onClick={() => setExpandOpen(true)}
+                    >
+                        <IconArrowsMaximize />
+                    </IconButton>
+                )}
+            </div>
+
+            {/* Warning banner — rendered when present */}
+            {input.warning && (
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'row',
+                        borderRadius: 10,
+                        background: 'rgb(254,252,191)',
+                        padding: 10,
+                        marginTop: 10,
+                        marginBottom: 10
+                    }}
+                >
+                    <IconAlertTriangle size={36} color='orange' />
+                    <span style={{ color: 'rgb(116,66,16)', marginLeft: 10 }}>{input.warning}</span>
+                </div>
+            )}
+
+            {/* Input — conditional on type */}
+            {input.type === 'boolean' && (
+                <SwitchInput disabled={disabled} value={value as boolean | undefined} onChange={(checked) => onChange(checked)} />
+            )}
+            {(input.type === 'string' || input.type === 'password' || input.type === 'number') && (
+                <OutlinedInput
+                    disabled={disabled}
+                    fullWidth
+                    type={input.type === 'password' ? 'password' : input.type === 'number' ? 'number' : 'text'}
+                    multiline={!!input.rows}
+                    rows={input.rows}
+                    placeholder={input.placeholder}
+                    value={(value as string) ?? ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+                />
+            )}
+            {input.type === 'json' && (
+                <JsonInput disabled={disabled} value={(value as string) ?? '{}'} onChange={(json) => onChange(json)} />
+            )}
+            {input.type === 'options' && input.options && (
+                <Dropdown
+                    disabled={disabled}
+                    name={input.name}
+                    options={input.options}
+                    onSelect={(newValue) => onChange(newValue)}
+                    value={(value as string) ?? 'choose an option'}
+                />
+            )}
+
+            {/* Expand dialog for multiline string fields */}
+            {showExpand && (
+                <Dialog open={expandOpen} onClose={() => setExpandOpen(false)} fullWidth maxWidth='md'>
+                    <DialogTitle>{input.label}</DialogTitle>
+                    <DialogContent>
+                        <OutlinedInput
+                            disabled={disabled}
+                            fullWidth
+                            multiline
+                            minRows={12}
+                            placeholder={input.placeholder}
+                            value={(value as string) ?? ''}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
+                        />
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setExpandOpen(false)}>Close</Button>
+                    </DialogActions>
+                </Dialog>
+            )}
         </Box>
     )
 }

@@ -54,6 +54,8 @@ export interface CredentialSchemaInput {
     placeholder?: string
     options?: Array<{ label: string; name: string }>
     hidden?: boolean
+    rows?: number
+    warning?: string
 }
 
 export interface ComponentCredentialSchema {
