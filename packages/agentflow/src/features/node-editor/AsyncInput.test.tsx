@@ -20,7 +20,7 @@ jest.mock('@tabler/icons-react', () => ({
 }))
 
 jest.mock('./CreateCredentialDialog', () => ({
-    CreateCredentialDialog: ({ open, onCreated, onClose }: any) =>
+    CreateCredentialDialog: ({ open, onCreated, onClose }: { open: boolean; onCreated: (id: string) => void; onClose: () => void }) =>
         open ? (
             <div data-testid='create-credential-dialog'>
                 <button onClick={() => onCreated('new-cred-id')}>Create</button>

@@ -42,7 +42,7 @@ atoms/
 -   No API calls
 -   Stateless or minimal local state
 -   Imported by features, never the reverse
--   **Forbidden**: Importing from `features/` or `infrastructure/` (except types from `core/types` for prop definitions and design tokens from `core/theme`)
+-   **Forbidden**: Importing from `features/` or `infrastructure/` (except types from `core/types` for prop definitions, design tokens from `core/theme`, and utilities from `core/utils`)
 
 **Goal:** 100% visual consistency.
 
