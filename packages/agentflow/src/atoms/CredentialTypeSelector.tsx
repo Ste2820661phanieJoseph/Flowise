@@ -86,7 +86,7 @@ export function CredentialTypeSelector({ schemas, apiBaseUrl, onSelect }: Creden
 }
 
 /** Circular credential icon with fallback to a key icon on load error. */
-function CredentialIcon({ name, apiBaseUrl }: { name: string; apiBaseUrl: string }) {
+export function CredentialIcon({ name, apiBaseUrl }: { name: string; apiBaseUrl: string }) {
     const theme = useTheme()
     const [failed, setFailed] = useState(false)
 

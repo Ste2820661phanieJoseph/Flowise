@@ -17,7 +17,7 @@ import { useTheme } from '@mui/material/styles'
 import { IconAlertTriangle, IconArrowsMaximize } from '@tabler/icons-react'
 import parser from 'html-react-parser'
 
-import { CredentialTypeSelector } from '@/atoms/CredentialTypeSelector'
+import { CredentialIcon, CredentialTypeSelector } from '@/atoms/CredentialTypeSelector'
 import { Dropdown } from '@/atoms/Dropdown'
 import { JsonInput } from '@/atoms/JsonInput'
 import { SwitchInput } from '@/atoms/SwitchInput'
@@ -178,26 +178,8 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
             <DialogTitle sx={{ fontSize: '1rem', p: 3, pb: 0 }}>
                 {selectedSchema ? (
                     <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-                        <div
-                            style={{
-                                width: 50,
-                                height: 50,
-                                marginRight: 10,
-                                borderRadius: '50%',
-                                backgroundColor: theme.palette.common.white
-                            }}
-                        >
-                            <img
-                                style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    padding: 7,
-                                    borderRadius: '50%',
-                                    objectFit: 'contain'
-                                }}
-                                alt={selectedSchema.name}
-                                src={`${apiBaseUrl}/api/v1/components-credentials-icon/${selectedSchema.name}`}
-                            />
+                        <div style={{ marginRight: 10 }}>
+                            <CredentialIcon name={selectedSchema.name} apiBaseUrl={apiBaseUrl} />
                         </div>
                         {selectedSchema.label}
                     </div>
