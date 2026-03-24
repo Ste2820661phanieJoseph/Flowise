@@ -7,6 +7,7 @@ import { Assistant } from '../../database/entities/Assistant'
 import { Credential } from '../../database/entities/Credential'
 import { DocumentStore } from '../../database/entities/DocumentStore'
 import { Workspace } from '../../enterprise/database/entities/workspace.entity'
+import { WorkspaceService } from '../../enterprise/services/workspace.service'
 import { getWorkspaceSearchOptions } from '../../enterprise/utils/ControllerServiceUtils'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { getErrorMessage } from '../../errors/utils'
@@ -20,12 +21,28 @@ import { ASSISTANT_PROMPT_GENERATOR } from '../../utils/prompt'
 import { checkUsageLimit } from '../../utils/quotaUsage'
 import nodesService from '../nodes'
 
-function applyAssistantCreateFields(entity: Assistant, body: any): void {
+const findAccessibleCredential = async (credentialId: string, workspaceId: string): Promise<Credential | null> => {
+    const appServer = getRunningExpressApp()
+    const credential = await appServer.AppDataSource.getRepository(Credential).findOneBy({
+        id: credentialId,
+        workspaceId
+    })
+    if (credential) return credential
+
+    const workspaceService = new WorkspaceService()
+    const sharedItems = (await workspaceService.getSharedItemsForWorkspace(workspaceId, 'credential')) as Credential[]
+    if (sharedItems.some((item) => item.id === credentialId)) {
+        return await appServer.AppDataSource.getRepository(Credential).findOneBy({ id: credentialId })
+    }
+    return null
+}
+
+function applyAssistantCreateFields(entity: Assistant, body: any, workspaceId: string): void {
     entity.details = body.details
     entity.credential = body.credential
     entity.iconSrc = body.iconSrc
     entity.type = body.type
-    entity.workspaceId = body.workspaceId
+    entity.workspaceId = workspaceId
 }
 
 function applyAssistantUpdateFields(entity: Assistant, details: string, body: any): void {
@@ -34,7 +51,7 @@ function applyAssistantUpdateFields(entity: Assistant, details: string, body: an
     entity.iconSrc = body.iconSrc
 }
 
-const createAssistant = async (requestBody: any, orgId: string): Promise<Assistant> => {
+const createAssistant = async (requestBody: any, orgId: string, workspaceId: string): Promise<Assistant> => {
     try {
         const appServer = getRunningExpressApp()
         if (!requestBody.details) {
@@ -44,7 +61,7 @@ const createAssistant = async (requestBody: any, orgId: string): Promise<Assista
 
         if (requestBody.type === 'CUSTOM') {
             const newAssistant = new Assistant()
-            applyAssistantCreateFields(newAssistant, requestBody)
+            applyAssistantCreateFields(newAssistant, requestBody, workspaceId)
 
             const assistant = appServer.AppDataSource.getRepository(Assistant).create(newAssistant)
             const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
@@ -64,9 +81,7 @@ const createAssistant = async (requestBody: any, orgId: string): Promise<Assista
         }
 
         try {
-            const credential = await appServer.AppDataSource.getRepository(Credential).findOneBy({
-                id: requestBody.credential
-            })
+            const credential = await findAccessibleCredential(requestBody.credential, workspaceId)
 
             if (!credential) {
                 throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Credential ${requestBody.credential} not found`)
@@ -149,7 +164,7 @@ const createAssistant = async (requestBody: any, orgId: string): Promise<Assista
             throw new InternalFlowiseError(StatusCodes.INTERNAL_SERVER_ERROR, `Error creating new assistant - ${getErrorMessage(error)}`)
         }
         const newAssistant = new Assistant()
-        applyAssistantCreateFields(newAssistant, requestBody)
+        applyAssistantCreateFields(newAssistant, requestBody, workspaceId)
 
         const assistant = appServer.AppDataSource.getRepository(Assistant).create(newAssistant)
         const dbResponse = await appServer.AppDataSource.getRepository(Assistant).save(assistant)
@@ -321,9 +336,7 @@ const updateAssistant = async (assistantId: string, requestBody: any, workspaceI
             const openAIAssistantId = JSON.parse(assistant.details)?.id
             const body = requestBody
             const assistantDetails = JSON.parse(body.details)
-            const credential = await appServer.AppDataSource.getRepository(Credential).findOneBy({
-                id: body.credential
-            })
+            const credential = await findAccessibleCredential(body.credential, workspaceId)
 
             if (!credential) {
                 throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Credential ${body.credential} not found`)
