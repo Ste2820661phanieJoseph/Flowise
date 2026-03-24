@@ -80,7 +80,7 @@ export function ScenariosInput({ inputParam, data, disabled = false, onDataChang
         <Box sx={{ p: 2 }}>
             <Typography>
                 {inputParam.label}
-                {!inputParam.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+                {!inputParam.optional && <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>}
                 {inputParam.description && <TooltipWithParser title={inputParam.description} />}
             </Typography>
 

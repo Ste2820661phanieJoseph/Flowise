@@ -411,7 +411,7 @@ export function NodeInputHandler({
                     <Box sx={{ p: 2 }}>
                         <Typography>
                             {inputAnchor.label}
-                            {!inputAnchor.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+                            {!inputAnchor.optional && <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>}
                         </Typography>
                     </Box>
                 </>
@@ -439,7 +439,7 @@ export function NodeInputHandler({
                         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                             <Typography>
                                 {inputParam?.label}
-                                {!inputParam?.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+                                {!inputParam?.optional && <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>}
                                 {inputParam?.description && <TooltipWithParser title={inputParam.description} />}
                             </Typography>
                             <div style={{ flexGrow: 1 }} />
@@ -451,7 +451,7 @@ export function NodeInputHandler({
                                         disabled={disabled}
                                         onClick={(e) => setVariableAnchorEl(e.currentTarget)}
                                     >
-                                        <IconVariable size={20} style={{ color: 'teal' }} />
+                                        <IconVariable size={20} style={{ color: theme.palette.info.main }} />
                                     </IconButton>
                                 </Tooltip>
                             )}

@@ -13,6 +13,7 @@ import {
     OutlinedInput,
     Typography
 } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import { IconAlertTriangle, IconArrowsMaximize } from '@tabler/icons-react'
 import parser from 'html-react-parser'
 
@@ -37,6 +38,7 @@ export interface CreateCredentialDialogProps {
  */
 export function CreateCredentialDialog({ open, credentialNames, onClose, onCreated }: CreateCredentialDialogProps) {
     const { credentialsApi, apiBaseUrl } = useApiContext()
+    const theme = useTheme()
 
     const [schemas, setSchemas] = useState<ComponentCredentialSchema[]>([])
     const [selectedSchema, setSelectedSchema] = useState<ComponentCredentialSchema | null>(null)
@@ -122,10 +124,21 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         setError(null)
 
         try {
+            const plainDataObj: Record<string, unknown> = {}
+            for (const key of Object.keys(formValues)) {
+                const input = selectedSchema.inputs?.find((i) => i.name === key)
+                const val = formValues[key]
+                if (input?.type === 'number' && typeof val === 'string' && val) {
+                    plainDataObj[key] = Number(val)
+                } else {
+                    plainDataObj[key] = val
+                }
+            }
+
             const result = await credentialsApi.createCredential({
                 name: credentialName.trim(),
                 credentialName: selectedSchema.name,
-                plainDataObj: formValues
+                plainDataObj
             })
             onCreated(result.id)
         } catch (err) {
@@ -153,7 +166,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                 height: 50,
                                 marginRight: 10,
                                 borderRadius: '50%',
-                                backgroundColor: 'white'
+                                backgroundColor: theme.palette.common.white
                             }}
                         >
                             <img
@@ -211,13 +224,13 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                         display: 'flex',
                                         flexDirection: 'row',
                                         borderRadius: 10,
-                                        background: 'rgb(254,252,191)',
+                                        background: theme.palette.warning.light,
                                         padding: 10,
                                         marginTop: 10,
                                         marginBottom: 10
                                     }}
                                 >
-                                    <span style={{ color: 'rgb(116,66,16)' }}>{parser(selectedSchema.description)}</span>
+                                    <span style={{ color: theme.palette.warning.dark }}>{parser(selectedSchema.description)}</span>
                                 </div>
                             </Box>
                         )}
@@ -225,7 +238,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                         <Box sx={{ p: 2 }}>
                             <Typography variant='overline'>
                                 Credential Name
-                                <span style={{ color: 'red' }}>&nbsp;*</span>
+                                <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>
                             </Typography>
                             <OutlinedInput
                                 fullWidth
@@ -276,6 +289,7 @@ interface CredentialFieldProps {
 }
 
 function CredentialField({ input, value, onChange, disabled = false }: CredentialFieldProps) {
+    const theme = useTheme()
     const [expandOpen, setExpandOpen] = useState(false)
     const showExpand = input.type === 'string' && !!input.rows
 
@@ -285,7 +299,7 @@ function CredentialField({ input, value, onChange, disabled = false }: Credentia
             <div style={{ display: 'flex', flexDirection: 'row' }}>
                 <Typography>
                     {input.label}
-                    {!input.optional && <span style={{ color: 'red' }}>&nbsp;*</span>}
+                    {!input.optional && <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>}
                     {input.description && <TooltipWithParser title={input.description} />}
                 </Typography>
                 <div style={{ flexGrow: 1 }} />
@@ -309,14 +323,14 @@ function CredentialField({ input, value, onChange, disabled = false }: Credentia
                         display: 'flex',
                         flexDirection: 'row',
                         borderRadius: 10,
-                        background: 'rgb(254,252,191)',
+                        background: theme.palette.warning.light,
                         padding: 10,
                         marginTop: 10,
                         marginBottom: 10
                     }}
                 >
-                    <IconAlertTriangle size={36} color='orange' />
-                    <span style={{ color: 'rgb(116,66,16)', marginLeft: 10 }}>{input.warning}</span>
+                    <IconAlertTriangle size={36} color={theme.palette.warning.main} />
+                    <span style={{ color: theme.palette.warning.dark, marginLeft: 10 }}>{input.warning}</span>
                 </div>
             )}
 

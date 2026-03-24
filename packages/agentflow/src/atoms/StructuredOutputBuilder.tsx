@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 
 import { Box, Button, Chip, IconButton, MenuItem, Select, TextField, Typography } from '@mui/material'
-import { useTheme } from '@mui/material/styles'
+import { alpha, useTheme } from '@mui/material/styles'
 import { IconArrowsMaximize, IconPlus, IconTrash } from '@tabler/icons-react'
 
 import { ExpandTextDialog } from '@/atoms'
@@ -103,7 +103,7 @@ export function StructuredOutputBuilder({ inputParam, data, disabled = false, on
                         mt: 2,
                         mb: 1,
                         border: 1,
-                        borderColor: theme.palette.grey[900] + 25,
+                        borderColor: alpha(theme.palette.grey[900], 0.25),
                         borderRadius: 2,
                         position: 'relative'
                     }}
@@ -120,7 +120,7 @@ export function StructuredOutputBuilder({ inputParam, data, disabled = false, on
                                 width: '35px',
                                 right: 10,
                                 top: 10,
-                                '&:hover': { color: 'red' }
+                                '&:hover': { color: theme.palette.error.main }
                             }}
                         >
                             <IconTrash />
@@ -135,7 +135,7 @@ export function StructuredOutputBuilder({ inputParam, data, disabled = false, on
                         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                             <Typography>
                                 Key
-                                <span style={{ color: 'red' }}>&nbsp;*</span>
+                                <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>
                             </Typography>
                         </div>
                         <TextField
@@ -154,7 +154,7 @@ export function StructuredOutputBuilder({ inputParam, data, disabled = false, on
                         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                             <Typography>
                                 Type
-                                <span style={{ color: 'red' }}>&nbsp;*</span>
+                                <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>
                             </Typography>
                         </div>
                         <Select
@@ -227,7 +227,7 @@ export function StructuredOutputBuilder({ inputParam, data, disabled = false, on
                         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
                             <Typography>
                                 Description
-                                <span style={{ color: 'red' }}>&nbsp;*</span>
+                                <span style={{ color: theme.palette.error.main }}>&nbsp;*</span>
                             </Typography>
                         </div>
                         <TextField
