@@ -3,6 +3,7 @@ import type { ReactFlowInstance } from 'reactflow'
 
 import { cloneDeep } from 'lodash'
 
+import { getDefaultValueForType } from '@/core/primitives'
 import type {
     AgentflowAction,
     AgentflowState,
@@ -14,7 +15,7 @@ import type {
     InputParam,
     NodeData
 } from '@/core/types'
-import { getDefaultValueForType, getUniqueNodeId } from '@/core/utils'
+import { getUniqueNodeId } from '@/core/utils'
 
 import { agentflowReducer, initialState, normalizeNodes } from './agentflowReducer'
 

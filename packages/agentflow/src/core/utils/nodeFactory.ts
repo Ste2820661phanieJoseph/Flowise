@@ -1,7 +1,7 @@
+import { getDefaultValueForType } from '../primitives'
 import type { FlowNode, NodeData, OutputAnchor } from '../types'
 
 import { buildDynamicOutputAnchors } from './dynamicOutputAnchors'
-import { getDefaultValueForType } from './inputDefaults'
 
 /**
  * Map from NodeData.type to the ReactFlow node type key.

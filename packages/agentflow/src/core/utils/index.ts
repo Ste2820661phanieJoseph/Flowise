@@ -9,6 +9,3 @@ export { evaluateFieldVisibility, evaluateParamVisibility, stripHiddenFieldValue
 
 // Dynamic output anchor utilities
 export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutputAnchors'
-
-// Input default value utilities
-export { getDefaultValueForType } from './inputDefaults'

@@ -6,8 +6,9 @@ import { alpha, useTheme } from '@mui/material/styles'
 import { IconSettings } from '@tabler/icons-react'
 
 import { type AsyncInputProps, NodeInputHandler } from '@/atoms'
+import { getDefaultValueForType } from '@/core/primitives'
 import type { InputParam, NodeData } from '@/core/types'
-import { evaluateFieldVisibility, getDefaultValueForType, initNode } from '@/core/utils'
+import { evaluateFieldVisibility, initNode } from '@/core/utils'
 import { useApiContext } from '@/infrastructure/store'
 
 // ─── Props ────────────────────────────────────────────────────────────────────

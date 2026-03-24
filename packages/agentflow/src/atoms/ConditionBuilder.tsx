@@ -4,8 +4,8 @@ import { Box, Button, Chip, IconButton, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { IconPlus, IconTrash } from '@tabler/icons-react'
 
+import { getDefaultValueForType } from '@/core/primitives'
 import type { InputParam, NodeData } from '@/core/types'
-import { getDefaultValueForType } from '@/core/utils/inputDefaults'
 
 import { NodeInputHandler } from './NodeInputHandler'
 import { useStableKeys } from './useStableKeys'
