@@ -17,6 +17,7 @@ import {
     buildCronFromVisualPicker,
     canScheduleEnable
 } from './utils'
+import { ICommonObject } from 'flowise-components'
 
 export {
     validateCronExpression,
@@ -71,7 +72,7 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
         const timezone = validation.valid ? input.timezone ?? FALLBACK_TIMEZONE : FALLBACK_TIMEZONE
 
         // Upsert: find existing record for this target + triggerType
-        let existing = await repo.findOne({
+        const existing = await repo.findOne({
             where: {
                 targetId: input.targetId,
                 triggerType: input.triggerType,
@@ -80,14 +81,21 @@ const createOrUpdateSchedule = async (input: CreateScheduleInput): Promise<Sched
         })
 
         if (existing) {
-            existing.cronExpression = cronExpression
-            existing.timezone = timezone
-            if (input.enabled !== undefined) existing.enabled = input.enabled
-            if (input.defaultInput !== undefined) existing.defaultInput = input.defaultInput
-            if (input.nodeId !== undefined) existing.nodeId = input.nodeId
-            existing.endDate = input.endDate ?? null
-            existing.nextRunAt = computeNextRunAt(cronExpression, timezone) ?? null
-            const saved = await repo.save(existing)
+            const updateSchedule = new ScheduleRecord()
+            const bodySchedule: ICommonObject = {
+                cronExpression,
+                timezone
+            }
+            if (input.enabled !== undefined) bodySchedule.enabled = input.enabled
+            if (input.defaultInput !== undefined) bodySchedule.defaultInput = input.defaultInput
+            if (input.nodeId !== undefined) bodySchedule.nodeId = input.nodeId
+            bodySchedule.endDate = input.endDate ?? null
+            bodySchedule.nextRunAt = computeNextRunAt(cronExpression, timezone) ?? null
+
+            // NOTE: Use assign + merge to update `endDate` and `nextRunAt` even if they are null
+            Object.assign(updateSchedule, bodySchedule)
+            const merged = repo.merge(existing, updateSchedule)
+            const saved = await repo.save(merged)
             logger.debug(`[ScheduleService]: Updated schedule ${saved.id} for ${input.triggerType}:${input.targetId}`)
             return saved
         }

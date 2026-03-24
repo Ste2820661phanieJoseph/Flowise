@@ -39,7 +39,7 @@ export class ScheduleTriggerLog {
     @Column({ nullable: true, type: 'integer' })
     elapsedTimeMs?: number
 
-    @Column({ type: 'timestamp' })
+    @Column()
     scheduledAt: Date
 
     @Column({ type: 'varchar' })

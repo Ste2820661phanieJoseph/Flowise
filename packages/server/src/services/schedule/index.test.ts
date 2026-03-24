@@ -12,7 +12,8 @@ const mockRepo = {
     create: jest.fn(),
     save: jest.fn(),
     delete: jest.fn(),
-    update: jest.fn()
+    update: jest.fn(),
+    merge: jest.fn()
 }
 
 const mockAppDataSource = {
@@ -147,6 +148,7 @@ describe('createOrUpdateSchedule', () => {
         const existing = makeRecord()
         const saved = { ...existing, cronExpression: '0 9 * * 1-5' }
         mockRepo.findOne.mockResolvedValue(existing)
+        mockRepo.merge.mockReturnValue(saved)
         mockRepo.save.mockResolvedValue(saved)
 
         const result = await scheduleService.createOrUpdateSchedule(baseInput)
