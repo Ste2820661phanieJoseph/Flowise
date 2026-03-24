@@ -224,13 +224,13 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                         display: 'flex',
                                         flexDirection: 'row',
                                         borderRadius: 10,
-                                        background: theme.palette.warning.light,
+                                        background: theme.palette.warningBanner.background,
                                         padding: 10,
                                         marginTop: 10,
                                         marginBottom: 10
                                     }}
                                 >
-                                    <span style={{ color: theme.palette.warning.dark }}>{parser(selectedSchema.description)}</span>
+                                    <span style={{ color: theme.palette.warningBanner.text }}>{parser(selectedSchema.description)}</span>
                                 </div>
                             </Box>
                         )}
@@ -323,14 +323,14 @@ function CredentialField({ input, value, onChange, disabled = false }: Credentia
                         display: 'flex',
                         flexDirection: 'row',
                         borderRadius: 10,
-                        background: theme.palette.warning.light,
+                        background: theme.palette.warningBanner.background,
                         padding: 10,
                         marginTop: 10,
                         marginBottom: 10
                     }}
                 >
                     <IconAlertTriangle size={36} color={theme.palette.warning.main} />
-                    <span style={{ color: theme.palette.warning.dark, marginLeft: 10 }}>{input.warning}</span>
+                    <span style={{ color: theme.palette.warningBanner.text, marginLeft: 10 }}>{input.warning}</span>
                 </div>
             )}
 

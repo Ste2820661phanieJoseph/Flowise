@@ -29,24 +29,64 @@ function buildAsyncParams(
 }
 
 function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, inputValues }: AsyncInputProps) {
+    const isCredential = !!inputParam.credentialNames?.length
+    const [createDialogOpen, setCreateDialogOpen] = useState(false)
+    const [reloadKey, setReloadKey] = useState(0)
+
+    const handleCreated = useCallback(
+        (newCredentialId: string) => {
+            setCreateDialogOpen(false)
+            onChange(newCredentialId)
+            // Changing reloadKey forces AsyncOptionsDropdown to remount, which
+            // re-runs useAsyncOptions and fetches fresh options including the
+            // newly created credential — matching original Flowise behaviour.
+            setReloadKey((k) => k + 1)
+        },
+        [onChange]
+    )
+
+    return (
+        <>
+            <AsyncOptionsDropdown
+                key={reloadKey}
+                inputParam={inputParam}
+                value={value}
+                disabled={disabled}
+                onChange={onChange}
+                nodeName={nodeName}
+                inputValues={inputValues}
+                isCredential={isCredential}
+                onCreateNew={() => setCreateDialogOpen(true)}
+            />
+            {isCredential && (
+                <CreateCredentialDialog
+                    open={createDialogOpen}
+                    credentialNames={inputParam.credentialNames!}
+                    onClose={() => setCreateDialogOpen(false)}
+                    onCreated={handleCreated}
+                />
+            )}
+        </>
+    )
+}
+
+/** Inner component that owns the useAsyncOptions hook. Remounted via key to force a fresh fetch. */
+function AsyncOptionsDropdown({
+    inputParam,
+    value,
+    disabled,
+    onChange,
+    nodeName,
+    inputValues,
+    isCredential,
+    onCreateNew
+}: AsyncInputProps & { isCredential: boolean; onCreateNew: () => void }) {
     const params = buildAsyncParams(inputParam.loadMethod, nodeName, inputValues)
     const { options, loading, error, refetch } = useAsyncOptions({
         loadMethod: inputParam.loadMethod,
         credentialNames: inputParam.credentialNames,
         params
     })
-
-    const isCredential = !!inputParam.credentialNames?.length
-    const [createDialogOpen, setCreateDialogOpen] = useState(false)
-
-    const handleCreated = useCallback(
-        (newCredentialId: string) => {
-            setCreateDialogOpen(false)
-            onChange(newCredentialId)
-            refetch()
-        },
-        [onChange, refetch]
-    )
 
     if (error) {
         return (
@@ -67,85 +107,75 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
     const matchedValue = displayOptions.find((o) => o.name === value) ?? null
 
     return (
-        <>
-            <Autocomplete<NodeOption>
-                size='small'
-                disabled={disabled}
-                options={displayOptions}
-                value={matchedValue}
-                getOptionLabel={(o) => o.label}
-                isOptionEqualToValue={(o, v) => o.name === v.name}
-                onChange={(_e, selection) => {
-                    if (selection?.name === CREATE_NEW_SENTINEL) {
-                        setCreateDialogOpen(true)
-                        return
-                    }
-                    onChange(selection?.name ?? '')
-                }}
-                loading={loading}
-                noOptionsText={loading ? 'Loading…' : 'No options available'}
-                sx={{ mt: 1 }}
-                renderOption={(props, option) => (
-                    <Box component='li' {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {option.name === CREATE_NEW_SENTINEL ? (
-                            <Typography variant='h5' color='primary'>
-                                {option.label}
-                            </Typography>
-                        ) : (
+        <Autocomplete<NodeOption>
+            size='small'
+            disabled={disabled}
+            options={displayOptions}
+            value={matchedValue}
+            getOptionLabel={(o) => o.label}
+            isOptionEqualToValue={(o, v) => o.name === v.name}
+            onChange={(_e, selection) => {
+                if (selection?.name === CREATE_NEW_SENTINEL) {
+                    onCreateNew()
+                    return
+                }
+                onChange(selection?.name ?? '')
+            }}
+            loading={loading}
+            noOptionsText={loading ? 'Loading…' : 'No options available'}
+            sx={{ mt: 1 }}
+            renderOption={(props, option) => (
+                <Box component='li' {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {option.name === CREATE_NEW_SENTINEL ? (
+                        <Typography variant='h5' color='primary'>
+                            {option.label}
+                        </Typography>
+                    ) : (
+                        <>
+                            {option.imageSrc && (
+                                <Box
+                                    component='img'
+                                    src={option.imageSrc}
+                                    alt={option.label}
+                                    sx={{ width: 30, height: 30, padding: '1px', borderRadius: '50%', flexShrink: 0 }}
+                                />
+                            )}
+                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                                <Typography variant='h5'>{option.label}</Typography>
+                                {option.description && <Typography variant='caption'>{option.description}</Typography>}
+                            </Box>
+                        </>
+                    )}
+                </Box>
+            )}
+            renderInput={(params) => (
+                <TextField
+                    {...params}
+                    InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
                             <>
-                                {option.imageSrc && (
+                                {matchedValue?.imageSrc && (
                                     <Box
                                         component='img'
-                                        src={option.imageSrc}
-                                        alt={option.label}
-                                        sx={{ width: 30, height: 30, padding: '1px', borderRadius: '50%', flexShrink: 0 }}
+                                        src={matchedValue.imageSrc}
+                                        alt={matchedValue.label}
+                                        sx={{ width: 32, height: 32, borderRadius: '50%', mr: 0.5, flexShrink: 0 }}
                                     />
                                 )}
-                                <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                    <Typography variant='h5'>{option.label}</Typography>
-                                    {option.description && <Typography variant='caption'>{option.description}</Typography>}
-                                </Box>
+                                {params.InputProps.startAdornment}
                             </>
-                        )}
-                    </Box>
-                )}
-                renderInput={(params) => (
-                    <TextField
-                        {...params}
-                        InputProps={{
-                            ...params.InputProps,
-                            startAdornment: (
-                                <>
-                                    {matchedValue?.imageSrc && (
-                                        <Box
-                                            component='img'
-                                            src={matchedValue.imageSrc}
-                                            alt={matchedValue.label}
-                                            sx={{ width: 32, height: 32, borderRadius: '50%', mr: 0.5, flexShrink: 0 }}
-                                        />
-                                    )}
-                                    {params.InputProps.startAdornment}
-                                </>
-                            ),
-                            endAdornment: (
-                                <Fragment>
-                                    {loading ? <CircularProgress color='inherit' size={20} /> : null}
-                                    {params.InputProps.endAdornment}
-                                </Fragment>
-                            )
-                        }}
-                    />
-                )}
-            />
-            {isCredential && (
-                <CreateCredentialDialog
-                    open={createDialogOpen}
-                    credentialNames={inputParam.credentialNames!}
-                    onClose={() => setCreateDialogOpen(false)}
-                    onCreated={handleCreated}
+                        ),
+                        endAdornment: (
+                            <Fragment>
+                                {loading ? <CircularProgress color='inherit' size={20} /> : null}
+                                {params.InputProps.endAdornment}
+                            </Fragment>
+                        )
+                    }}
                 />
             )}
-        </>
+        />
     )
 }
 

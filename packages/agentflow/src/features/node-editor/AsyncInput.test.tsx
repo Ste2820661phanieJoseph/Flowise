@@ -490,7 +490,7 @@ describe('AsyncInput – Create New credential', () => {
         expect(screen.getByTestId('create-credential-dialog')).toBeTruthy()
     })
 
-    it('after credential creation, onChange is called with new ID and refetch is called', async () => {
+    it('after credential creation, onChange is called with new ID and component remounts to refetch', async () => {
         const mockChange = jest.fn()
         mockUseAsyncOptions.mockReturnValue({
             ...idleResult(),
@@ -506,6 +506,8 @@ describe('AsyncInput – Create New credential', () => {
             />
         )
 
+        const initialCallCount = mockUseAsyncOptions.mock.calls.length
+
         // Open dropdown and select "- Create New -"
         fireEvent.mouseDown(screen.getByRole('combobox'))
         await waitFor(() => screen.getByText('- Create New -'))
@@ -515,6 +517,7 @@ describe('AsyncInput – Create New credential', () => {
         fireEvent.click(screen.getByText('Create'))
 
         expect(mockChange).toHaveBeenCalledWith('new-cred-id')
-        expect(mockRefetch).toHaveBeenCalledTimes(1)
+        // The inner dropdown component remounts (via key change), re-running useAsyncOptions
+        expect(mockUseAsyncOptions.mock.calls.length).toBeGreaterThan(initialCallCount)
     })
 })
