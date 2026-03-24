@@ -1,11 +1,11 @@
-import type { AxiosInstance } from 'axios'
-
 import type { ComponentCredentialSchema, CreateCredentialBody, Credential } from '@/core/types'
+
+import type { DeduplicatedClient } from './deduplicatedClient'
 
 /**
  * Create credentials API functions bound to a client instance
  */
-export function bindCredentialsApi(client: AxiosInstance) {
+export function bindCredentialsApi(client: DeduplicatedClient) {
     return {
         /**
          * Get all credentials
@@ -36,6 +36,7 @@ export function bindCredentialsApi(client: AxiosInstance) {
          */
         createCredential: async (body: CreateCredentialBody): Promise<Credential> => {
             const response = await client.post('/credentials', body)
+            client.clearCache()
             return response.data
         },
 
@@ -52,6 +53,7 @@ export function bindCredentialsApi(client: AxiosInstance) {
          */
         updateCredential: async (id: string, body: CreateCredentialBody): Promise<Credential> => {
             const response = await client.put(`/credentials/${id}`, body)
+            client.clearCache()
             return response.data
         }
     }

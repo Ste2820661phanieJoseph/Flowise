@@ -1,12 +1,12 @@
-import type { AxiosInstance } from 'axios'
-
 import { bindCredentialsApi } from './credentials'
+import type { DeduplicatedClient } from './deduplicatedClient'
 
 const mockClient = {
     get: jest.fn(),
     post: jest.fn(),
-    put: jest.fn()
-} as unknown as jest.Mocked<AxiosInstance>
+    put: jest.fn(),
+    clearCache: jest.fn()
+} as unknown as jest.Mocked<DeduplicatedClient>
 
 beforeEach(() => {
     jest.clearAllMocks()
