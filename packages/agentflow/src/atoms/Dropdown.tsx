@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-
 import { Box, FormControl, Popper, TextField, Typography } from '@mui/material'
 import Autocomplete, { autocompleteClasses } from '@mui/material/Autocomplete'
 import { alpha, styled, useTheme } from '@mui/material/styles'
@@ -50,12 +48,7 @@ export function Dropdown({
 }: DropdownProps) {
     const theme = useTheme()
 
-    const [internalValue, setInternalValue] = useState(value ?? 'choose an option')
-
-    useEffect(() => {
-        setInternalValue(value ?? 'choose an option')
-    }, [value])
-
+    const resolvedValue = value ?? 'choose an option'
     const findMatchingOption = (val: string) => options.find((option) => option.name === val) ?? null
 
     return (
@@ -68,17 +61,16 @@ export function Dropdown({
                 size='small'
                 loading={loading}
                 options={options}
-                value={findMatchingOption(internalValue)}
+                value={findMatchingOption(resolvedValue)}
                 getOptionLabel={(option) => (typeof option === 'string' ? option : option.label)}
                 isOptionEqualToValue={(option, val) => option.name === val.name}
                 onChange={(_e, selection) => {
                     const newValue = selection && typeof selection !== 'string' ? selection.name : ''
-                    setInternalValue(newValue)
                     onSelect(newValue)
                 }}
                 PopperComponent={StyledPopper}
                 renderInput={(params) => {
-                    const matchingOption = findMatchingOption(internalValue)
+                    const matchingOption = findMatchingOption(resolvedValue)
                     return (
                         <TextField
                             {...params}

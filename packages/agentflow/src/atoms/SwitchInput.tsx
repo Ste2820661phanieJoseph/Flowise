@@ -1,5 +1,3 @@
-import { useEffect, useState } from 'react'
-
 import { FormControl, Switch, Typography } from '@mui/material'
 
 export interface SwitchInputProps {
@@ -14,11 +12,7 @@ export interface SwitchInputProps {
  * Mirrors the original Flowise SwitchInput component.
  */
 export function SwitchInput({ label, value, onChange, disabled = false }: SwitchInputProps) {
-    const [myValue, setMyValue] = useState(value !== undefined ? !!value : false)
-
-    useEffect(() => {
-        setMyValue(value !== undefined ? !!value : false)
-    }, [value])
+    const checked = value !== undefined ? !!value : false
 
     return (
         <FormControl
@@ -28,9 +22,8 @@ export function SwitchInput({ label, value, onChange, disabled = false }: Switch
             {label && <Typography>{label}</Typography>}
             <Switch
                 disabled={disabled}
-                checked={myValue}
+                checked={checked}
                 onChange={(event) => {
-                    setMyValue(event.target.checked)
                     onChange(event.target.checked)
                 }}
             />

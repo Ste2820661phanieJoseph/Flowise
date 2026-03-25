@@ -1,6 +1,7 @@
 import { Info } from '@mui/icons-material'
 import { IconButton, type SxProps, Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
+import DOMPurify from 'dompurify'
 import parser from 'html-react-parser'
 
 export interface TooltipWithParserProps {
@@ -17,7 +18,7 @@ export function TooltipWithParser({ title, sx }: TooltipWithParserProps) {
     const isDarkMode = theme.palette.mode === 'dark'
 
     return (
-        <Tooltip title={parser(title)} placement='right'>
+        <Tooltip title={parser(DOMPurify.sanitize(title))} placement='right'>
             <IconButton sx={{ height: 15, width: 15, ml: 2, mt: -0.5 }}>
                 <Info
                     sx={{

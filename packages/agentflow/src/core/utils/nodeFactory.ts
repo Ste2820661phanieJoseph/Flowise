@@ -1,5 +1,5 @@
 import { getDefaultValueForType } from '../primitives'
-import type { FlowNode, NodeData, OutputAnchor } from '../types'
+import type { FlowNode, InputParam, NodeData, OutputAnchor } from '../types'
 
 import { buildDynamicOutputAnchors } from './dynamicOutputAnchors'
 
@@ -56,9 +56,7 @@ export function getUniqueNodeLabel(nodeData: NodeData, nodes: FlowNode[]): strin
  * Initialize default values for node parameters.
  * Falls back to '' for params without a default — needed by show/hide condition evaluation.
  */
-function initializeDefaultNodeData(
-    nodeParams: Array<{ name: string; type: string; default?: unknown; options?: Array<{ name: string } | string> }>
-): Record<string, unknown> {
+function initializeDefaultNodeData(nodeParams: Pick<InputParam, 'name' | 'type' | 'default' | 'options'>[]): Record<string, unknown> {
     const initialValues: Record<string, unknown> = {}
 
     for (const input of nodeParams) {
