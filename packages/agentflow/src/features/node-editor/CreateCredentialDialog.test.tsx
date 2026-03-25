@@ -1,8 +1,17 @@
+import type { ReactElement } from 'react'
+
+import { ThemeProvider } from '@mui/material/styles'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
+import { createAgentflowTheme } from '@/core/theme/createAgentflowTheme'
 import type { ComponentCredentialSchema } from '@/core/types'
 
 import { CreateCredentialDialog } from './CreateCredentialDialog'
+
+const theme = createAgentflowTheme(false)
+function renderWithTheme(ui: ReactElement) {
+    return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
+}
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -147,7 +156,7 @@ describe('CreateCredentialDialog', () => {
                 resolveSchema = r
             })
         )
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         expect(screen.getByRole('progressbar')).toBeInTheDocument()
 
@@ -158,7 +167,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('fetches schema and renders form for single credentialName', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             expect(mockGetComponentCredentialSchema).toHaveBeenCalledWith('openAIApi')
@@ -169,7 +178,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('renders credential icon in dialog title', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             const img = screen.getByAltText('openAIApi')
@@ -179,7 +188,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('renders description banner with parsed HTML', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             expect(screen.getByTestId('parsed-html')).toBeInTheDocument()
@@ -188,7 +197,7 @@ describe('CreateCredentialDialog', () => {
 
     it('shows error alert when schema fetch fails', async () => {
         mockGetComponentCredentialSchema.mockRejectedValue(new Error('Network error'))
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             expect(screen.getByText('Network error')).toBeInTheDocument()
@@ -196,7 +205,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('credential name starts empty with label as placeholder', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             const nameInput = screen.getByPlaceholderText('OpenAI API')
@@ -205,7 +214,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('Add button is disabled when credential name is empty', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             expect(screen.getByText('Add')).toBeDisabled()
@@ -213,7 +222,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('Add button is disabled when required fields are empty', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
@@ -224,7 +233,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('Add button is enabled when credential name and required fields are filled', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
@@ -235,7 +244,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('submits credential and calls onCreated with new ID', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
@@ -256,7 +265,7 @@ describe('CreateCredentialDialog', () => {
 
     it('shows error when credential creation fails', async () => {
         mockCreateCredential.mockRejectedValue(new Error('Server error'))
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByPlaceholderText('OpenAI API'))
 
@@ -273,7 +282,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('calls onClose when Cancel is clicked', async () => {
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => screen.getByText('Cancel'))
 
@@ -282,7 +291,7 @@ describe('CreateCredentialDialog', () => {
     })
 
     it('does not render when open is false', () => {
-        render(<CreateCredentialDialog {...defaultProps} open={false} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} open={false} />)
 
         expect(screen.queryByText('Credential Name')).not.toBeInTheDocument()
     })
@@ -295,7 +304,7 @@ describe('CreateCredentialDialog – multiple credential types', () => {
             return Promise.resolve(awsSchema)
         })
 
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['openAIApi', 'awsApi']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['openAIApi', 'awsApi']} />)
 
         await waitFor(() => {
             expect(screen.getByText('Add New Credential')).toBeInTheDocument()
@@ -310,7 +319,7 @@ describe('CreateCredentialDialog – multiple credential types', () => {
             return Promise.resolve(awsSchema)
         })
 
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['openAIApi', 'awsApi']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['openAIApi', 'awsApi']} />)
 
         await waitFor(() => screen.getByText('AWS security credentials'))
 
@@ -325,7 +334,7 @@ describe('CreateCredentialDialog – multiple credential types', () => {
 describe('CredentialField – field types', () => {
     it('renders all visible field types and hides hidden fields', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithAllTypes)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByText('Text Field')).toBeInTheDocument()
@@ -341,7 +350,7 @@ describe('CredentialField – field types', () => {
 
     it('renders boolean field with SwitchInput', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithAllTypes)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByTestId('switch-input')).toBeInTheDocument()
@@ -350,7 +359,7 @@ describe('CredentialField – field types', () => {
 
     it('renders json field with JsonInput', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithAllTypes)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByTestId('json-input')).toBeInTheDocument()
@@ -359,7 +368,7 @@ describe('CredentialField – field types', () => {
 
     it('renders options field with Dropdown', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithAllTypes)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByTestId('dropdown')).toBeInTheDocument()
@@ -368,7 +377,7 @@ describe('CredentialField – field types', () => {
 
     it('renders multiline string field with expand button', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithAllTypes)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['fullSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByTitle('Expand')).toBeInTheDocument()
@@ -377,7 +386,7 @@ describe('CredentialField – field types', () => {
 
     it('renders placeholder for string fields', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(awsSchema)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['awsApi']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['awsApi']} />)
 
         await waitFor(() => {
             expect(screen.getByPlaceholderText('arn:aws:iam::role/name')).toBeInTheDocument()
@@ -386,7 +395,7 @@ describe('CredentialField – field types', () => {
 
     it('renders tooltip for fields with description', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(awsSchema)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['awsApi']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['awsApi']} />)
 
         await waitFor(() => {
             expect(screen.getByTestId('tooltip-with-parser')).toBeInTheDocument()
@@ -395,7 +404,7 @@ describe('CredentialField – field types', () => {
 
     it('renders required indicator for non-optional fields', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(openAISchema)
-        render(<CreateCredentialDialog {...defaultProps} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} />)
 
         await waitFor(() => {
             // OpenAI Api Key has optional undefined (required)
@@ -406,7 +415,7 @@ describe('CredentialField – field types', () => {
 
     it('renders warning banner when field has warning', async () => {
         mockGetComponentCredentialSchema.mockResolvedValue(schemaWithWarning)
-        render(<CreateCredentialDialog {...defaultProps} credentialNames={['warningSchema']} />)
+        renderWithTheme(<CreateCredentialDialog {...defaultProps} credentialNames={['warningSchema']} />)
 
         await waitFor(() => {
             expect(screen.getByText('This may break things!')).toBeInTheDocument()

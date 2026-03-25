@@ -48,7 +48,7 @@ describe('Dropdown', () => {
 
         fireEvent.mouseDown(screen.getByRole('combobox'))
         await waitFor(() => {
-            const img = screen.getByAltText('Google model')
+            const img = screen.getByAltText('Gemini')
             expect(img).toBeInTheDocument()
             expect(img).toHaveAttribute('src', 'http://test/gemini.png')
         })
