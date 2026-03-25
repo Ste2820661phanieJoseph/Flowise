@@ -181,6 +181,37 @@ export interface IExecution {
     workspaceId: string
 }
 
+export interface IScheduleRecord {
+    id: string
+    triggerType: string
+    targetId: string
+    nodeId?: string
+    cronExpression: string
+    timezone: string
+    enabled: boolean
+    defaultInput?: string
+    lastRunAt?: Date
+    nextRunAt?: Date
+    endDate?: Date
+    workspaceId: string
+    createdDate: Date
+    updatedDate: Date
+}
+
+export interface IScheduleTriggerLog {
+    id: string
+    scheduleRecordId: string
+    triggerType: string
+    targetId: string
+    executionId?: string
+    status: string
+    error?: string
+    elapsedTimeMs?: number
+    scheduledAt: Date
+    workspaceId: string
+    createdDate: Date
+}
+
 export interface IComponentNodes {
     [key: string]: INode
 }

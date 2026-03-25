@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm'
+import { IScheduleTriggerLog } from '../../Interface'
 import { ScheduleTriggerType } from './ScheduleRecord'
 
 export enum ScheduleTriggerStatus {
@@ -11,7 +12,7 @@ export enum ScheduleTriggerStatus {
 }
 
 @Entity()
-export class ScheduleTriggerLog {
+export class ScheduleTriggerLog implements IScheduleTriggerLog {
     @PrimaryGeneratedColumn('uuid')
     id: string
 

@@ -1,12 +1,13 @@
 /* eslint-disable */
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm'
+import { IScheduleRecord } from '../../Interface'
 
 export enum ScheduleTriggerType {
     AGENTFLOW = 'AGENTFLOW'
 }
 
 @Entity()
-export class ScheduleRecord {
+export class ScheduleRecord implements IScheduleRecord {
     @PrimaryGeneratedColumn('uuid')
     id: string
 
@@ -39,15 +40,15 @@ export class ScheduleRecord {
     @Column({ nullable: true, type: 'text' })
     defaultInput?: string
 
-    @Column()
-    lastRunAt: Date
+    @Column({ nullable: true })
+    lastRunAt?: Date
 
-    @Column()
-    nextRunAt: Date
+    @Column({ nullable: true })
+    nextRunAt?: Date
 
     /** Optional date/time after which the schedule will no longer fire */
-    @Column()
-    endDate: Date
+    @Column({ nullable: true })
+    endDate?: Date
 
     @Column({ type: 'varchar' })
     workspaceId: string
