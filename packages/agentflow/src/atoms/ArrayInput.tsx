@@ -76,7 +76,7 @@ export function ArrayInput({
 
         if (inputParam.array) {
             for (const field of inputParam.array) {
-                newItem[field.name] = getDefaultValueForType(field)
+                newItem[field.name] = getDefaultValueForType(field.type, field.options, field.default)
             }
         }
 

@@ -1,24 +1,14 @@
 /**
- * Minimal shape accepted by getDefaultValueForType.
- * Both InputParam and CredentialSchemaInput satisfy this interface.
- */
-interface TypedInput {
-    type: string
-    default?: unknown
-    options?: Array<{ name: string } | string>
-}
-
-/**
  * Returns the appropriate default value for an input based on its type.
- * If the input already defines a `default`, that value is returned as-is.
+ * If a `defaultValue` is provided, it is returned as-is.
  *
- * Works with any input shape that has `type`, optional `default`, and optional `options`
- * (e.g. InputParam, CredentialSchemaInput).
+ * Accepts plain parameters so it stays decoupled from any domain type
+ * (InputParam, CredentialSchemaInput, etc.).
  */
-export function getDefaultValueForType(input: TypedInput): unknown {
-    if (input.default !== undefined) return input.default
+export function getDefaultValueForType(inputType: string, options?: Array<{ name: string } | string>, defaultValue?: unknown): unknown {
+    if (defaultValue !== undefined) return defaultValue
 
-    switch (input.type) {
+    switch (inputType) {
         case 'boolean':
             return false
         case 'number':
@@ -28,7 +18,7 @@ export function getDefaultValueForType(input: TypedInput): unknown {
         case 'array':
             return []
         case 'options': {
-            const first = input.options?.[0]
+            const first = options?.[0]
             if (!first) return ''
             return typeof first === 'string' ? first : first.name
         }

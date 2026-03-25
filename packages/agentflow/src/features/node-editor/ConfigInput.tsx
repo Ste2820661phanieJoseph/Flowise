@@ -34,7 +34,7 @@ export interface ConfigInputProps {
 function initializeDefaults(params: InputParam[]): Record<string, unknown> {
     const defaults: Record<string, unknown> = {}
     for (const p of params) {
-        defaults[p.name] = getDefaultValueForType(p)
+        defaults[p.name] = getDefaultValueForType(p.type, p.options, p.default)
     }
     return defaults
 }

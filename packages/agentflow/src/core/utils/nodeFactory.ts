@@ -60,7 +60,7 @@ function initializeDefaultNodeData(nodeParams: Pick<InputParam, 'name' | 'type' 
     const initialValues: Record<string, unknown> = {}
 
     for (const input of nodeParams) {
-        initialValues[input.name] = getDefaultValueForType(input)
+        initialValues[input.name] = getDefaultValueForType(input.type, input.options, input.default)
     }
 
     return initialValues

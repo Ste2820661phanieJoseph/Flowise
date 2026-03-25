@@ -15,6 +15,7 @@ import {
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { IconAlertTriangle, IconArrowsMaximize } from '@tabler/icons-react'
+import DOMPurify from 'dompurify'
 import parser from 'html-react-parser'
 
 import { CredentialIcon, CredentialTypeSelector } from '@/atoms/CredentialTypeSelector'
@@ -64,7 +65,7 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
         const defaults: Record<string, unknown> = {}
         for (const input of schema.inputs ?? []) {
             if (input.hidden) continue
-            defaults[input.name] = getDefaultValueForType(input)
+            defaults[input.name] = getDefaultValueForType(input.type, input.options, input.default)
         }
         setFormValues(defaults)
     }, [])
@@ -227,7 +228,9 @@ export function CreateCredentialDialog({ open, credentialNames, onClose, onCreat
                                         marginBottom: 10
                                     }}
                                 >
-                                    <span style={{ color: theme.palette.warningBanner.text }}>{parser(selectedSchema.description)}</span>
+                                    <span style={{ color: theme.palette.warningBanner.text }}>
+                                        {parser(DOMPurify.sanitize(selectedSchema.description))}
+                                    </span>
                                 </div>
                             </Box>
                         )}

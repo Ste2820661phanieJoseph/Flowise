@@ -217,7 +217,9 @@ export function AgentflowStateProvider({ children, initialFlow }: AgentflowState
                     if (isConnectionString(value)) {
                         // Reset string connections to parameter default
                         const inputParam = newNode.data.inputs?.find((p) => p.name === inputName)
-                        newNode.data.inputValues[inputName] = inputParam ? getDefaultValueForType(inputParam) : ''
+                        newNode.data.inputValues[inputName] = inputParam
+                            ? getDefaultValueForType(inputParam.type, inputParam.options, inputParam.default)
+                            : ''
                     } else if (Array.isArray(value)) {
                         // Filter out connection strings from arrays
                         newNode.data.inputValues[inputName] = value.filter((item) => !isConnectionString(item))
