@@ -15,8 +15,7 @@ interface TypedInput {
  * Works with any input shape that has `type`, optional `default`, and optional `options`
  * (e.g. InputParam, CredentialSchemaInput).
  */
-export function getDefaultValueForType(input: TypedInput | undefined | null): unknown {
-    if (!input) return ''
+export function getDefaultValueForType(input: TypedInput): unknown {
     if (input.default !== undefined) return input.default
 
     switch (input.type) {
