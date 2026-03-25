@@ -208,7 +208,13 @@ const saveCustomTemplate = async (body: any): Promise<any> => {
         let flowDataStr = ''
         let derivedFramework = ''
         const customTemplate = new CustomTemplate()
-        Object.assign(customTemplate, body)
+        // Explicit assignment — never use Object.assign with untrusted body
+        customTemplate.name = body.name
+        customTemplate.workspaceId = body.workspaceId
+        if (body.description !== undefined) customTemplate.description = body.description
+        if (body.badge !== undefined) customTemplate.badge = body.badge
+        if (body.usecases !== undefined) customTemplate.usecases = body.usecases
+        if (body.type !== undefined) customTemplate.type = body.type
 
         if (body.chatflowId) {
             const chatflow = await chatflowsService.getChatflowById(body.chatflowId, body.workspaceId)

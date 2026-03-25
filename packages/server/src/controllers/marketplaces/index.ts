@@ -46,21 +46,31 @@ const getAllCustomTemplates = async (req: Request, res: Response, next: NextFunc
 
 const saveCustomTemplate = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        if ((!req.body && !(req.body.chatflowId || req.body.tool)) || !req.body.name) {
+        const body = req.body
+        if (!body || !(body.chatflowId || body.tool) || !body.name) {
             throw new InternalFlowiseError(
                 StatusCodes.PRECONDITION_FAILED,
                 `Error: marketplacesService.saveCustomTemplate - body not provided!`
             )
         }
-        const body = req.body
-        body.workspaceId = req.user?.activeWorkspaceId
-        if (!body.workspaceId) {
+        const workspaceId = req.user?.activeWorkspaceId
+        if (!workspaceId) {
             throw new InternalFlowiseError(
                 StatusCodes.NOT_FOUND,
-                `Error: marketplacesController.saveCustomTemplate - workspace ${body.workspaceId} not found!`
+                `Error: marketplacesController.saveCustomTemplate - workspace ${workspaceId} not found!`
             )
         }
-        const apiResponse = await marketplacesService.saveCustomTemplate(body)
+        // Explicit allowlist — id/workspaceId/timestamps must not be overrideable by client
+        const templateBody: Record<string, unknown> = {}
+        if (body.name !== undefined) templateBody.name = body.name
+        if (body.description !== undefined) templateBody.description = body.description
+        if (body.badge !== undefined) templateBody.badge = body.badge
+        if (body.usecases !== undefined) templateBody.usecases = body.usecases
+        if (body.type !== undefined) templateBody.type = body.type
+        if (body.chatflowId !== undefined) templateBody.chatflowId = body.chatflowId
+        if (body.tool !== undefined) templateBody.tool = body.tool
+        templateBody.workspaceId = workspaceId
+        const apiResponse = await marketplacesService.saveCustomTemplate(templateBody)
         return res.json(apiResponse)
     } catch (error) {
         next(error)
