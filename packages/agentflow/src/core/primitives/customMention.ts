@@ -4,7 +4,7 @@
  * Port of packages/ui/src/utils/customMention.js to TypeScript.
  * Includes markdown tokenizer/parser/renderer for @tiptap/markdown integration.
  */
-import { type JSONContent, PasteRule } from '@tiptap/core'
+import { type JSONContent, type MarkdownToken, PasteRule } from '@tiptap/core'
 import Mention from '@tiptap/extension-mention'
 
 export const CustomMention = Mention.extend({
@@ -42,7 +42,7 @@ export const CustomMention = Mention.extend({
     },
 
     /** Parse a markdown mention token into a TipTap mention node. */
-    parseMarkdown(token: { label: string }) {
+    parseMarkdown(token: MarkdownToken) {
         return {
             type: 'mention',
             attrs: {

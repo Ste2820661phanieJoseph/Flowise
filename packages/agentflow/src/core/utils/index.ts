@@ -11,5 +11,4 @@ export { evaluateFieldVisibility, evaluateParamVisibility, stripHiddenFieldValue
 export { buildDynamicOutputAnchors, parseOutputHandleIndex } from './dynamicOutputAnchors'
 
 // Variable utilities
-export { CustomMention } from './customMention'
 export { extractVariables, getUpstreamNodes, VARIABLE_REGEX } from './variableUtils'

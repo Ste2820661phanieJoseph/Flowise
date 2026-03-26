@@ -14,8 +14,8 @@ import python from 'highlight.js/lib/languages/python'
 import typescript from 'highlight.js/lib/languages/typescript'
 import { createLowlight } from 'lowlight'
 
+import { CustomMention } from '@/core/primitives/customMention'
 import { tokens } from '@/core/theme/tokens'
-import { CustomMention } from '@/core/utils/customMention'
 
 import { createSuggestionConfig } from './suggestionConfig'
 import type { SuggestionItem } from './SuggestionDropdown'
