@@ -31,6 +31,7 @@ import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
 import EditNodeDialog from '@/views/agentflowsv2/EditNodeDialog'
 import ChatPopUp from '@/views/chatmessage/ChatPopUp'
 import ValidationPopUp from '@/views/chatmessage/ValidationPopUp'
+import AgentBuilderPanel from '@/views/agentflowsv2/AgentBuilderPanel'
 import { flowContext } from '@/store/context/ReactFlowContext'
 
 // API
@@ -638,6 +639,7 @@ const AgentflowCanvas = () => {
     usePrompt('You have unsaved changes! Do you want to navigate away?', canvasDataStore.isDirty)
 
     const [chatPopupOpen, setChatPopupOpen] = useState(false)
+    const [agentBuilderOpen, setAgentBuilderOpen] = useState(false)
 
     useEffect(() => {
         if (!chatflowId && !localStorage.getItem('duplicatedFlowData') && getNodesApi.data && nodes.length === 0) {
@@ -770,6 +772,8 @@ const AgentflowCanvas = () => {
                                     nodesData={getNodesApi.data}
                                     node={selectedNode}
                                     onFlowGenerated={triggerConfetti}
+                                    agentBuilderOpen={agentBuilderOpen}
+                                    onToggleAgentBuilder={() => setAgentBuilderOpen((prev) => !prev)}
                                 />
                                 <EditNodeDialog
                                     show={editNodeDialogOpen}
@@ -799,6 +803,7 @@ const AgentflowCanvas = () => {
                                 <ChatPopUp isAgentCanvas={true} chatflowid={chatflowId} onOpenChange={setChatPopupOpen} />
                                 {!chatPopupOpen && <ValidationPopUp isAgentCanvas={true} chatflowid={chatflowId} />}
                             </ReactFlow>
+                            <AgentBuilderPanel open={agentBuilderOpen} onClose={() => setAgentBuilderOpen(false)} />
                         </div>
                     </div>
                 </Box>

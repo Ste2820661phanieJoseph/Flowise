@@ -3,5 +3,6 @@ import agentflowv2GeneratorController from '../../controllers/agentflowv2-genera
 const router = express.Router()
 
 router.post('/generate', agentflowv2GeneratorController.generateAgentflowv2)
+router.post('/chat', agentflowv2GeneratorController.chatAgentflowv2)
 
 export default router

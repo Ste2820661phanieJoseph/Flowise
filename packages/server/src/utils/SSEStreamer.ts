@@ -316,4 +316,96 @@ export class SSEStreamer implements IServerSideEventStreamer {
             delete this.clients[chatId]
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Agent Builder streaming events
+    // -----------------------------------------------------------------------
+
+    streamCredentialCheckEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'credential_check',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamCredentialBoundEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'credential_bound',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamTestStartEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'test_start',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamTestResultEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'test_result',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamEvaluationEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'evaluation',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamIterationStartEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'iteration_start',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamIterationFlowUpdateEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'iteration_flow_update',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
+
+    streamToolSelectionEvent(chatId: string, data: any): void {
+        const client = this.clients[chatId]
+        if (client) {
+            const clientResponse = {
+                event: 'tool_selection',
+                data: data
+            }
+            client.response.write('message:\ndata:' + JSON.stringify(clientResponse) + '\n\n')
+        }
+    }
 }

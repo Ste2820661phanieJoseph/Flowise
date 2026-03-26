@@ -22,13 +22,14 @@ const EdgeDataType = z.object({
 const NodeDataType = z
     .object({
         label: z.string().optional().describe('Label for the node'),
-        name: z.string().optional().describe('Name of the node')
+        name: z.string().optional().describe('Name of the node'),
+        inputs: z.record(z.any()).optional().describe('Node-specific input configuration')
     })
     .optional()
 
 const NodeType = z.object({
     id: z.string().describe('Unique identifier for the node'),
-    type: z.enum(['agentFlow']).describe('Type of the node'),
+    type: z.string().describe('Type of the node'),
     position: NodePositionType.describe('Position of the node in the UI'),
     width: z.number().describe('Width of the node'),
     height: z.number().describe('Height of the node'),
@@ -39,7 +40,7 @@ const NodeType = z.object({
 
 const EdgeType = z.object({
     id: z.string().describe('Unique identifier for the edge'),
-    type: z.enum(['agentFlow']).describe('Type of the node'),
+    type: z.string().optional().default('agentFlow').describe('Type of the edge'),
     source: z.string().describe('ID of the source node'),
     sourceHandle: z.string().describe('ID of the source handle'),
     target: z.string().describe('ID of the target node'),
@@ -72,6 +73,7 @@ interface AgentToolConfig {
     agentSelectedTool: string
     agentSelectedToolConfig: {
         agentSelectedTool: string
+        [key: string]: any
     }
 }
 
@@ -81,6 +83,7 @@ interface NodeInputs {
     toolInputArgs?: Record<string, any>[]
     toolAgentflowSelectedToolConfig?: {
         toolAgentflowSelectedTool: string
+        [key: string]: any
     }
     [key: string]: any
 }
@@ -148,6 +151,103 @@ interface OutputAnchor {
     name: string
 }
 
+/**
+ * Tag-based parser for extracting <explanation> and <flow_json> from streamed LLM output.
+ */
+const parseTaggedResponse = (fullText: string): { explanation: string; flowJsonRaw: string } => {
+    const explanationMatch = fullText.match(/<explanation>([\s\S]*?)<\/explanation>/)
+    const flowJsonMatch = fullText.match(/<flow_json>([\s\S]*?)<\/flow_json>/)
+
+    return {
+        explanation: explanationMatch ? explanationMatch[1].trim() : '',
+        flowJsonRaw: flowJsonMatch ? flowJsonMatch[1].trim() : ''
+    }
+}
+
+export interface GenerateNodesEdgesChatOptions {
+    onToken?: (token: string) => void
+}
+
+export interface GenerateNodesEdgesChatResult {
+    explanation: string
+    nodes: any[]
+    edges: any[]
+}
+
+/**
+ * Streaming variant of generateNodesEdges().
+ * - Streams tokens via the onToken callback as they arrive
+ * - Parses <explanation> and <flow_json> tags from the LLM response
+ * - Validates the flow_json with NodesEdgesType Zod schema
+ */
+export const generateNodesEdgesChat = async (
+    config: Record<string, any>,
+    messages: Array<{ role: string; content: string }>,
+    options?: GenerateNodesEdgesChatOptions
+): Promise<GenerateNodesEdgesChatResult> => {
+    const chatModelComponent = config.componentNodes[config.selectedChatModel?.name]
+    if (!chatModelComponent) {
+        throw new Error('Chat model component not found')
+    }
+    const nodeInstanceFilePath = chatModelComponent.filePath as string
+    const nodeModule = await import(nodeInstanceFilePath)
+    const newToolNodeInstance = new nodeModule.nodeClass()
+
+    const initOptions: ICommonObject = {
+        appDataSource: config.appDataSource,
+        databaseEntities: config.databaseEntities,
+        logger: config.logger
+    }
+    const model = (await newToolNodeInstance.init(config.selectedChatModel, '', initOptions)) as BaseChatModel
+
+    // Stream tokens and accumulate full response
+    let fullText = ''
+    const stream = await model.stream(messages)
+
+    for await (const chunk of stream) {
+        const token = extractResponseContent(chunk)
+        if (token) {
+            fullText += token
+            options?.onToken?.(token)
+        }
+    }
+
+    // Parse tags from accumulated response
+    const { explanation, flowJsonRaw } = parseTaggedResponse(fullText)
+
+    if (!flowJsonRaw) {
+        throw new Error('No <flow_json> tag found in LLM response')
+    }
+
+    // Parse and validate JSON
+    let parsedJSON: any
+    try {
+        parsedJSON = JSON.parse(flowJsonRaw)
+    } catch (parseError) {
+        throw new Error(`Failed to parse JSON from <flow_json>: ${(parseError as Error).message}`)
+    }
+
+    const validated = NodesEdgesType.parse(parsedJSON)
+
+    // Normalize type fields — LLMs sometimes output node names (e.g. "agentAgentflow")
+    // instead of the universal "agentFlow" type that the UI expects
+    for (const node of validated.nodes) {
+        node.type = 'agentFlow'
+    }
+    for (const edge of validated.edges) {
+        edge.type = 'agentFlow'
+    }
+
+    return {
+        explanation,
+        nodes: validated.nodes,
+        edges: validated.edges
+    }
+}
+
+// Exported for external use (tag parsing utility)
+export { parseTaggedResponse }
+
 export const generateAgentflowv2 = async (config: Record<string, any>, question: string, options: ICommonObject) => {
     try {
         const result = await generateNodesEdges(config, question, options)
@@ -165,7 +265,7 @@ export const generateAgentflowv2 = async (config: Record<string, any>, question:
     }
 }
 
-const updateEdges = (edges: Edge[], nodes: Node[]): Edge[] => {
+export const updateEdges = (edges: Edge[], nodes: Node[]): Edge[] => {
     const isMultiOutput = (source: string) => {
         return source.includes('conditionAgentflow') || source.includes('conditionAgentAgentflow') || source.includes('humanInputAgentflow')
     }
@@ -200,8 +300,48 @@ const updateEdges = (edges: Edge[], nodes: Node[]): Edge[] => {
     }
 
     const updatedEdges = edges.map((edge) => {
+        // Normalize targetHandle to match the DOM Handle id on the target node.
+        // AgentFlowNode renders <Handle type="target" id={data.id} /> where data.id
+        // is the node ID, but the LLM generates "{nodeId}-input-{label}". Strip the
+        // suffix so ReactFlow can find the handle and render the edge.
+        const normalizedTargetHandle = edge.target
+
+        // Normalize sourceHandle to match the actual output anchor IDs on the source node.
+        // AgentFlowNode renders <Handle type="source" id={outputAnchor.id} /> where
+        // outputAnchor.id follows the pattern "{nodeId}-output-{name}" or "{nodeId}-output-{index}".
+        // The LLM may generate a sourceHandle using the label instead of the node name
+        // (e.g. "startAgentflow_0-output-Start" instead of "startAgentflow_0-output-startAgentflow").
+        let normalizedSourceHandle = edge.sourceHandle
+        const sourceNode = nodes.find((n) => n.id === edge.source)
+        const anchors = sourceNode?.data?.outputAnchors
+        if (anchors && anchors.length > 0) {
+            const exactMatch = anchors.find((a: OutputAnchor) => a.id === edge.sourceHandle)
+            if (!exactMatch) {
+                if (anchors.length === 1) {
+                    normalizedSourceHandle = anchors[0].id
+                } else {
+                    const trailingPart = edge.sourceHandle.split('-').pop()
+                    let index: number
+                    if (trailingPart === 'true') {
+                        index = 0
+                    } else if (trailingPart === 'false') {
+                        index = 1
+                    } else {
+                        index = parseInt(trailingPart || '', 10)
+                    }
+                    if (!isNaN(index) && index < anchors.length) {
+                        normalizedSourceHandle = anchors[index].id
+                    } else {
+                        normalizedSourceHandle = anchors[0].id
+                    }
+                }
+            }
+        }
+
         return {
             ...edge,
+            sourceHandle: normalizedSourceHandle,
+            targetHandle: normalizedTargetHandle,
             data: {
                 ...edge.data,
                 sourceColor: findNodeColor(edge.source),
@@ -210,7 +350,7 @@ const updateEdges = (edges: Edge[], nodes: Node[]): Edge[] => {
                 isHumanInput: edge.source.includes('humanInputAgentflow') ? true : false
             },
             type: 'agentFlow',
-            id: `${edge.source}-${edge.sourceHandle}-${edge.target}-${edge.targetHandle}`
+            id: `${edge.source}-${normalizedSourceHandle}-${edge.target}-${normalizedTargetHandle}`
         }
     }) as Edge[]
 
@@ -229,7 +369,23 @@ const updateEdges = (edges: Edge[], nodes: Node[]): Edge[] => {
     return updatedEdges
 }
 
-const generateSelectedTools = async (nodes: Node[], config: Record<string, any>, question: string, options: ICommonObject) => {
+// MCP tools that have a known default action set — auto-select all actions
+const MCP_DEFAULT_ACTIONS: Record<string, string[]> = {
+    sequentialThinkingMCP: ['sequentialthinking']
+}
+
+/**
+ * Get extra MCP config (e.g. mcpActions) for a tool if it has known defaults.
+ */
+function getMcpDefaults(toolName: string): Record<string, any> {
+    const defaultActions = MCP_DEFAULT_ACTIONS[toolName]
+    if (defaultActions) {
+        return { mcpActions: JSON.stringify(defaultActions) }
+    }
+    return {}
+}
+
+export const generateSelectedTools = async (nodes: Node[], config: Record<string, any>, question: string, options: ICommonObject) => {
     const selectedTools: string[] = []
 
     for (let i = 0; i < nodes.length; i += 1) {
@@ -262,7 +418,8 @@ Now, select the tools that are needed to achieve the given task. You must only s
                     ...tools.map((tool) => ({
                         agentSelectedTool: tool,
                         agentSelectedToolConfig: {
-                            agentSelectedTool: tool
+                            agentSelectedTool: tool,
+                            ...getMcpDefaults(tool)
                         }
                     }))
                 ]
@@ -288,7 +445,8 @@ Now, select the ONLY tool that is needed to achieve the given task. You must onl
                 node.data.inputs.toolAgentflowSelectedTool = tools[0]
                 node.data.inputs.toolInputArgs = []
                 node.data.inputs.toolAgentflowSelectedToolConfig = {
-                    toolAgentflowSelectedTool: tools[0]
+                    toolAgentflowSelectedTool: tools[0],
+                    ...getMcpDefaults(tools[0])
                 }
             }
         }
@@ -409,7 +567,7 @@ const generateNodesEdges = async (config: Record<string, any>, question: string,
     }
 }
 
-const generateNodesData = (result: Record<string, any>, config: Record<string, any>) => {
+export const generateNodesData = (result: Record<string, any>, config: Record<string, any>) => {
     try {
         if (result.error) {
             return result
@@ -453,7 +611,7 @@ const generateNodesData = (result: Record<string, any>, config: Record<string, a
     }
 }
 
-const initNode = (nodeData: Record<string, any>, newNodeId: string): NodeData => {
+export const initNode = (nodeData: Record<string, any>, newNodeId: string): NodeData => {
     const inputParams = []
     const incoming = nodeData.inputs ? nodeData.inputs.length : 0
 

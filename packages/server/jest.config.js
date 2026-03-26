@@ -9,7 +9,12 @@ module.exports = {
 
     // Use ts-jest to transform TypeScript files
     transform: {
-        '^.+\\.tsx?$': 'ts-jest'
+        '^.+\\.tsx?$': [
+            'ts-jest',
+            {
+                diagnostics: false
+            }
+        ]
     },
 
     // Regular expression to find test files

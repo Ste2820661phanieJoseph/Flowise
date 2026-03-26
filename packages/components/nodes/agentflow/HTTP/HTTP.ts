@@ -1,9 +1,10 @@
-import { ICommonObject, INode, INodeData, INodeParams } from '../../../src/Interface'
+import { ICommonObject, INode, INodeData, INodeOptionsValue, INodeParams } from '../../../src/Interface'
 import { AxiosRequestConfig, Method, ResponseType } from 'axios'
 import FormData from 'form-data'
 import * as querystring from 'querystring'
-import { getCredentialData, getCredentialParam, parseJsonBody } from '../../../src/utils'
+import { getCredentialData, getCredentialParam, parseJsonBody, processTemplateVariables } from '../../../src/utils'
 import { secureAxiosRequest } from '../../../src/httpSecurity'
+import { updateFlowState } from '../utils'
 
 class HTTP_Agentflow implements INode {
     label: string
@@ -197,8 +198,41 @@ class HTTP_Agentflow implements INode {
                     }
                 ],
                 optional: true
+            },
+            {
+                label: 'Update Flow State',
+                name: 'httpUpdateState',
+                description: 'Save the HTTP response into flow state so it can be referenced by downstream nodes',
+                type: 'array',
+                optional: true,
+                acceptVariable: true,
+                array: [
+                    {
+                        label: 'Key',
+                        name: 'key',
+                        type: 'asyncOptions',
+                        loadMethod: 'listRuntimeStateKeys'
+                    },
+                    {
+                        label: 'Value',
+                        name: 'value',
+                        type: 'string',
+                        acceptVariable: true,
+                        acceptNodeOutputAsVariable: true
+                    }
+                ]
             }
         ]
+    }
+
+    //@ts-ignore
+    loadMethods = {
+        async listRuntimeStateKeys(_: INodeData, options: ICommonObject): Promise<INodeOptionsValue[]> {
+            const previousNodes = options.previousNodes as ICommonObject[]
+            const startAgentflowNode = previousNodes?.find((node: ICommonObject) => node.name === 'startAgentflow')
+            const state = startAgentflowNode?.inputs?.startState as ICommonObject[]
+            return (state || []).map((item: ICommonObject) => ({ label: item.key, name: item.key }))
+        }
     }
 
     async run(nodeData: INodeData, _: string, options: ICommonObject): Promise<any> {
@@ -209,6 +243,7 @@ class HTTP_Agentflow implements INode {
         const bodyType = nodeData.inputs?.bodyType as 'json' | 'raw' | 'formData' | 'xWwwFormUrlencoded'
         const body = nodeData.inputs?.body as ICommonObject | string | ICommonObject[]
         const responseType = nodeData.inputs?.responseType as 'json' | 'text' | 'arraybuffer' | 'base64'
+        const _httpUpdateState = nodeData.inputs?.httpUpdateState
 
         const state = options.agentflowRuntime?.state as ICommonObject
 
@@ -310,6 +345,15 @@ class HTTP_Agentflow implements INode {
                 responseData = response.data
             }
 
+            // Update flow state if configured — allows downstream nodes to reference HTTP results
+            let newState = { ...state }
+            if (_httpUpdateState && Array.isArray(_httpUpdateState) && _httpUpdateState.length > 0) {
+                newState = updateFlowState(state, _httpUpdateState)
+            }
+            // Resolve {{ output }} template variables in state values using the response data
+            const outputForTemplates = typeof responseData === 'object' ? JSON.stringify(responseData) : String(responseData ?? '')
+            newState = processTemplateVariables(newState, outputForTemplates)
+
             const returnOutput = {
                 id: nodeData.id,
                 name: this.name,
@@ -332,7 +376,7 @@ class HTTP_Agentflow implements INode {
                         headers: response.headers
                     }
                 },
-                state
+                state: newState
             }
 
             return returnOutput

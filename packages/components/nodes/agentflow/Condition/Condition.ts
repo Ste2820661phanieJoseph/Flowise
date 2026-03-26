@@ -325,7 +325,9 @@ class Condition_Agentflow implements INode {
                     value2 = removeMarkdown((_value2 as string) || '')
             }
 
-            const compareOperationResult = compareOperationFunctions[operation](value1, value2)
+            const compareFn = compareOperationFunctions[operation]
+            if (!compareFn) continue
+            const compareOperationResult = compareFn(value1, value2)
             if (compareOperationResult) {
                 // find the matching condition
                 const conditionIndex = conditions.findIndex((c) => JSON.stringify(c) === JSON.stringify(condition))
