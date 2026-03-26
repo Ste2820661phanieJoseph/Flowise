@@ -1,8 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 
-import { Box, Divider, List, ListItem, ListItemButton, Paper, Typography } from '@mui/material'
+import { Divider, List, ListItem, ListItemButton, Paper, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { IconBinaryTree, IconHistory, IconMessageChatbot, IconPaperclip } from '@tabler/icons-react'
 
 /**
  * Shape of items returned by the TipTap suggestion `items()` callback.
@@ -27,14 +26,6 @@ export interface SuggestionDropdownProps {
 export interface SuggestionDropdownRef {
     onKeyDown: (args: { event: KeyboardEvent }) => boolean
 }
-
-const CATEGORY_ICON: Record<string, { icon: React.ElementType; color: string }> = {
-    'Chat Context': { icon: IconMessageChatbot, color: '#6EC6E6' },
-    'Node Outputs': { icon: IconHistory, color: '#64B5F6' },
-    'Flow State': { icon: IconBinaryTree, color: '#FFA07A' }
-}
-
-const DEFAULT_ICON = { icon: IconPaperclip, color: '#90A4AE' }
 
 /**
  * Autocomplete dropdown for TipTap mention suggestions.
@@ -112,68 +103,58 @@ export const SuggestionDropdown = forwardRef<SuggestionDropdownRef, SuggestionDr
             data-testid='suggestion-dropdown'
         >
             <List ref={listRef} dense sx={{ overflow: 'hidden', maxWidth: 300 }}>
-                {Object.entries(grouped).map(([category, categoryItems], categoryIndex) => {
-                    const style = CATEGORY_ICON[category] || DEFAULT_ICON
-                    const Icon = style.icon
-
-                    return (
-                        <Box key={category}>
-                            {categoryIndex > 0 && <Divider />}
-                            <ListItem
-                                sx={{
-                                    py: 0.5,
-                                    bgcolor: theme.palette.mode === 'dark' ? theme.palette.common.black : theme.palette.grey[50]
-                                }}
-                            >
-                                <Typography
-                                    variant='overline'
-                                    color='text.secondary'
-                                    sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                                >
-                                    <Icon size={14} color={style.color} />
-                                    {category}
-                                </Typography>
-                            </ListItem>
-                            {categoryItems.map((item) => {
-                                const itemIndex = items.findIndex((i) => i.id === item.id)
-                                const isSelected = itemIndex === selectedIndex
-                                return (
-                                    <ListItem key={item.id} disablePadding>
-                                        <ListItemButton
-                                            data-selected={isSelected}
-                                            selected={isSelected}
-                                            onClick={() => selectItem(itemIndex)}
-                                            sx={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'flex-start'
-                                            }}
-                                        >
-                                            <Typography variant='body2' sx={{ fontWeight: isSelected ? 600 : 500 }}>
-                                                {item.label}
+                {Object.entries(grouped).map(([category, categoryItems], categoryIndex) => (
+                    <div key={category}>
+                        {categoryIndex > 0 && <Divider />}
+                        <ListItem
+                            sx={{
+                                py: 0.5,
+                                bgcolor: theme.palette.mode === 'dark' ? theme.palette.common.black : theme.palette.grey[50]
+                            }}
+                        >
+                            <Typography variant='overline' color='text.secondary'>
+                                {category}
+                            </Typography>
+                        </ListItem>
+                        {categoryItems.map((item) => {
+                            const itemIndex = items.findIndex((i) => i.id === item.id)
+                            const isSelected = itemIndex === selectedIndex
+                            return (
+                                <ListItem key={item.id} disablePadding>
+                                    <ListItemButton
+                                        data-selected={isSelected}
+                                        selected={isSelected}
+                                        onClick={() => selectItem(itemIndex)}
+                                        sx={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'flex-start'
+                                        }}
+                                    >
+                                        <Typography variant='body1' sx={{ fontWeight: 500 }}>
+                                            {item.label}
+                                        </Typography>
+                                        {item.description && (
+                                            <Typography
+                                                variant='caption'
+                                                color='text.secondary'
+                                                sx={{
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis'
+                                                }}
+                                            >
+                                                {item.description}
                                             </Typography>
-                                            {item.description && (
-                                                <Typography
-                                                    variant='caption'
-                                                    color='text.secondary'
-                                                    sx={{
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                >
-                                                    {item.description}
-                                                </Typography>
-                                            )}
-                                        </ListItemButton>
-                                    </ListItem>
-                                )
-                            })}
-                        </Box>
-                    )
-                })}
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            )
+                        })}
+                    </div>
+                ))}
             </List>
         </Paper>
     )

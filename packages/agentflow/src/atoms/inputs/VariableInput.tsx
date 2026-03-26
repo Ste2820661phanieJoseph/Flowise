@@ -90,13 +90,13 @@ const StyledEditorContent = styled(EditorContent, {
                 height: 0
             },
 
-            // Mention (variable) chip styling
+            // Mention (variable) chip styling — matches original UI green style
             '& .mention': {
-                backgroundColor: mode === 'dark' ? 'rgba(97, 175, 254, 0.2)' : 'rgba(25, 118, 210, 0.08)',
+                backgroundColor: mode === 'dark' ? 'rgba(76, 175, 80, 0.2)' : 'rgba(76, 175, 80, 0.08)',
                 borderRadius: '4px',
                 padding: '1px 4px',
                 fontWeight: 600,
-                color: theme.palette.primary.main,
+                color: mode === 'dark' ? '#81c784' : '#2e7d32',
                 whiteSpace: 'nowrap'
             },
 
