@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import PropTypes from 'prop-types'
-import { Box, Typography, Chip, Button } from '@mui/material'
+import { Box, Typography, Chip, Button, Collapse } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { useSelector } from 'react-redux'
-import { IconUser, IconRobot } from '@tabler/icons-react'
+import { IconUser, IconRobot, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 import CredentialCheckCard from './CredentialCheckCard'
 import ToolSelectionCard from './ToolSelectionCard'
 import TestResultCard from './TestResultCard'
@@ -98,19 +99,7 @@ const AgentBuilderMessage = ({ message, onCredentialResume, onCredentialSelect, 
                         }}
                     />
                 )}
-                {message.content && (
-                    <Typography
-                        variant='body2'
-                        sx={{
-                            whiteSpace: 'pre-wrap',
-                            wordBreak: 'break-word',
-                            lineHeight: 1.5
-                        }}
-                    >
-                        {message.content}
-                        {message.type === 'generating' && <BlinkingCursor />}
-                    </Typography>
-                )}
+                {message.content && <CollapsibleContent content={message.content} isGenerating={message.type === 'generating'} />}
                 {!message.content && message.type === 'generating' && (
                     <Typography variant='body2' sx={{ opacity: 0.6 }}>
                         Thinking...
@@ -138,6 +127,105 @@ const AgentBuilderMessage = ({ message, onCredentialResume, onCredentialSelect, 
             )}
         </Box>
     )
+}
+
+const PREVIEW_LENGTH = 160
+
+// Extract first JSON block from text (handles mixed text + JSON)
+const extractJsonBlock = (text) => {
+    const start = text.search(/[{[]/)
+    if (start === -1) return null
+    const sub = text.slice(start)
+    try {
+        return JSON.parse(sub)
+    } catch {
+        return null
+    }
+}
+
+const CollapsibleContent = ({ content, isGenerating }) => {
+    const [expanded, setExpanded] = useState(false)
+
+    if (!content) return null
+
+    const isLong = content.length > PREVIEW_LENGTH
+
+    if (!isLong) {
+        return (
+            <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                {content}
+                {isGenerating && <BlinkingCursor />}
+            </Typography>
+        )
+    }
+
+    // Long content — always collapse regardless of generating state
+    // Only attempt JSON pretty-printing after generation is done
+    const parsed = !isGenerating ? extractJsonBlock(content) : null
+    const previewText = content.slice(0, PREVIEW_LENGTH).trimEnd() + '…'
+
+    return (
+        <Box>
+            {!expanded && (
+                <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                    {previewText}
+                    {isGenerating && <BlinkingCursor />}
+                </Typography>
+            )}
+            <Collapse in={expanded}>
+                {parsed ? (
+                    <Box
+                        component='pre'
+                        sx={{
+                            m: 0,
+                            p: 1,
+                            bgcolor: 'rgba(0,0,0,0.06)',
+                            borderRadius: 1,
+                            fontSize: '0.7rem',
+                            fontFamily: 'monospace',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            maxHeight: 320,
+                            overflowY: 'auto'
+                        }}
+                    >
+                        {JSON.stringify(parsed, null, 2)}
+                    </Box>
+                ) : (
+                    <Typography variant='body2' sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                        {content}
+                        {isGenerating && <BlinkingCursor />}
+                    </Typography>
+                )}
+            </Collapse>
+            <Box
+                component='button'
+                onClick={() => setExpanded((v) => !v)}
+                sx={{
+                    mt: 0.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.25,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    p: 0,
+                    color: 'primary.main',
+                    fontSize: '0.7rem',
+                    opacity: 0.8,
+                    '&:hover': { opacity: 1 }
+                }}
+            >
+                {expanded ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+                {expanded ? 'Show less' : 'Show more'}
+            </Box>
+        </Box>
+    )
+}
+
+CollapsibleContent.propTypes = {
+    content: PropTypes.string,
+    isGenerating: PropTypes.bool
 }
 
 const BlinkingCursor = () => (

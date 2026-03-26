@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import PropTypes from 'prop-types'
-import { Box, Typography, CircularProgress } from '@mui/material'
+import { Box, Typography, CircularProgress, Collapse, IconButton } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
-import { IconCheck, IconX } from '@tabler/icons-react'
+import { IconCheck, IconX, IconChevronDown, IconChevronUp } from '@tabler/icons-react'
 
 const TestResultCard = ({ data, type }) => {
     const theme = useTheme()
+    const [responseExpanded, setResponseExpanded] = useState(false)
 
     if (!data) return null
 
@@ -48,24 +50,46 @@ const TestResultCard = ({ data, type }) => {
             )}
 
             {!isRunning && isPassed && data.response && (
-                <Typography
-                    variant='caption'
-                    color='text.secondary'
-                    sx={{
-                        display: 'block',
-                        mt: 0.5,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '100%'
-                    }}
-                >
-                    A: {data.response}
-                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <Typography
+                            variant='caption'
+                            color='text.secondary'
+                            sx={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                        >
+                            A: {data.response}
+                        </Typography>
+                        <IconButton size='small' onClick={() => setResponseExpanded((v) => !v)} sx={{ p: 0.25, flexShrink: 0 }}>
+                            {responseExpanded ? <IconChevronUp size={12} /> : <IconChevronDown size={12} />}
+                        </IconButton>
+                    </Box>
+                    <Collapse in={responseExpanded}>
+                        <Typography
+                            variant='caption'
+                            color='text.secondary'
+                            component='pre'
+                            sx={{
+                                display: 'block',
+                                mt: 0.5,
+                                p: 0.75,
+                                bgcolor: 'rgba(0,0,0,0.04)',
+                                borderRadius: 1,
+                                fontFamily: 'monospace',
+                                fontSize: '0.7rem',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                maxHeight: 200,
+                                overflowY: 'auto'
+                            }}
+                        >
+                            {data.response}
+                        </Typography>
+                    </Collapse>
+                </Box>
             )}
 
             {!isRunning && !isPassed && data.error && (
-                <Typography variant='caption' color='error' sx={{ display: 'block', mt: 0.5 }}>
+                <Typography variant='caption' color='error' sx={{ display: 'block', mt: 0.5, wordBreak: 'break-word' }}>
                     Error: {data.error}
                 </Typography>
             )}
