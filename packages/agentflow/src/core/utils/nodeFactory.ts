@@ -132,7 +132,7 @@ export function initNode(nodeData: NodeDataBase, newNodeId: string, isAgentflow 
     const inputDefinitions: Array<{ id: string; name: string; label: string; type: string; default?: unknown; optional?: boolean }> = []
 
     // Get input definitions from API response (nodeData.inputs contains InputParam[] from API)
-    const inputDefs = nodeData.inputs || []
+    const inputDefs = nodeData.inputs || nodeData.inputAnchors || []
 
     const whitelistTypes = [
         'asyncOptions',
