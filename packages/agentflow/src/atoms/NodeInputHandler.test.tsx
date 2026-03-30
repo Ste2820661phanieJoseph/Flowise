@@ -328,7 +328,7 @@ jest.mock('./JsonInput', () => ({
     )
 }))
 
-jest.mock('./inputs/VariablePicker', () => ({
+jest.mock('./VariablePicker', () => ({
     VariablePicker: ({ items, onSelect }: { items: Array<{ value: string }>; onSelect: (v: string) => void }) => (
         <div data-testid='select-variable'>
             {items.map((item, i) => (
