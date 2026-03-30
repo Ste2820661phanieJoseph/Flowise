@@ -28,8 +28,7 @@ jest.mock('@tiptap/starter-kit', () => ({
 jest.mock('@tiptap/extension-code-block-lowlight', () => ({
     __esModule: true,
     default: {
-        configure: jest.fn(() => 'CodeBlockLowlight'),
-        extend: jest.fn(() => 'CodeBlockLowlightExtended')
+        configure: jest.fn(() => 'CodeBlockLowlight')
     }
 }))
 
