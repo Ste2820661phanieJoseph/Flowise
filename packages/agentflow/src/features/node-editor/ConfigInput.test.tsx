@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 
-import type { ApiNodeData, InputParam, NodeData } from '@/core/types'
+import type { InputParam, NodeData, NodeDataBase } from '@/core/types'
 
 import { ConfigInput } from './ConfigInput'
 
@@ -53,7 +53,7 @@ const makeInputParam = (overrides?: Partial<InputParam>): InputParam => ({
 })
 
 /** Fake node definition returned by getNodeByName */
-const fakeNodeDefinition: ApiNodeData = {
+const fakeNodeDefinition: NodeDataBase = {
     name: 'chatAlibabaTongyi',
     label: 'ChatAlibabaTongyi',
     inputs: [
@@ -270,7 +270,7 @@ describe('ConfigInput', () => {
 
     describe('field visibility', () => {
         it('hides params based on show/hide conditions', async () => {
-            const nodeDefnWithVisibility: ApiNodeData = {
+            const nodeDefnWithVisibility: NodeDataBase = {
                 name: 'chatAlibabaTongyi',
                 label: 'ChatAlibabaTongyi',
                 inputs: [

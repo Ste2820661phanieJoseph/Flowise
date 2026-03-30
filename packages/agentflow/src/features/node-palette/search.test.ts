@@ -1,4 +1,4 @@
-import { makeApiNodeData } from '@test-utils/factories'
+import { makeNodeDataBase } from '@test-utils/factories'
 
 import { debounce, fuzzyScore, searchNodes } from './search'
 
@@ -68,7 +68,7 @@ describe('fuzzyScore', () => {
 
 describe('searchNodes', () => {
     const makeNode = (name: string, label: string, category?: string, description?: string) =>
-        makeApiNodeData({ name, label, category, description })
+        makeNodeDataBase({ name, label, category, description })
 
     const nodes = [
         makeNode('llmAgentflow', 'LLM', 'Agent Flows', 'Language model node'),

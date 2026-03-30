@@ -5,17 +5,17 @@ import { useTheme } from '@mui/material/styles'
 
 import { AGENTFLOW_ICONS } from '@/core'
 import { tokens } from '@/core/theme/tokens'
-import type { ApiNodeData } from '@/core/types'
+import type { NodeDataBase } from '@/core/types'
 
 const NODE_ICON_SIZE = 30
 const NODE_AVATAR_SIZE = 50
 
 interface NodeListItemProps {
-    node: ApiNodeData
+    node: NodeDataBase
     apiBaseUrl: string
     isLast: boolean
-    onDragStart: (event: React.DragEvent, node: ApiNodeData) => void
-    onClick: (node: ApiNodeData) => void
+    onDragStart: (event: React.DragEvent, node: NodeDataBase) => void
+    onClick: (node: NodeDataBase) => void
 }
 
 function NodeListItemComponent({ node, apiBaseUrl, isLast, onDragStart, onClick }: NodeListItemProps) {

@@ -22,7 +22,7 @@ import {
 } from '@mui/material'
 import { IconBook2, IconInfoCircle } from '@tabler/icons-react'
 
-import type { ApiNodeData, NodeConfigEntry, NodeData } from '@/core/types'
+import type { NodeConfigEntry, NodeData, NodeDataBase } from '@/core/types'
 import { useApiContext } from '@/infrastructure/store'
 
 import { renderNodeIcon } from '../nodeIcons'
@@ -84,14 +84,14 @@ function SchemaTooltipContent({ schema }: { schema: NodeConfigEntry['schema'] })
 function NodeInfoDialogComponent({ open, onClose, data }: NodeInfoDialogProps) {
     const { nodesApi, apiBaseUrl } = useApiContext()
     const [nodeConfig, setNodeConfig] = useState<NodeConfigEntry[]>([])
-    const [componentDef, setComponentDef] = useState<ApiNodeData | null>(null)
+    const [componentDef, setComponentDef] = useState<NodeDataBase | null>(null)
 
     const fetchData = useCallback(async () => {
         if (!data) return
         try {
             // Fetch the component definition first — it has the full input
             // parameter definitions that the config endpoint requires.
-            const def = await nodesApi.getNodeByName(data.name) // ApiNodeData
+            const def = await nodesApi.getNodeByName(data.name)
             setComponentDef(def)
 
             // Build config request with component definition schema merged

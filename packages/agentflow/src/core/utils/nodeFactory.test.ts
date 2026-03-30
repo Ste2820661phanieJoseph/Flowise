@@ -1,6 +1,6 @@
-import { makeApiNodeData, makeFlowNode } from '@test-utils/factories'
+import { makeFlowNode, makeNodeDataBase } from '@test-utils/factories'
 
-import type { ApiNodeData, NodeData } from '../types'
+import type { NodeData, NodeDataBase } from '../types'
 
 import { getUniqueNodeId, getUniqueNodeLabel, initNode, resolveNodeType } from './nodeFactory'
 
@@ -64,12 +64,12 @@ describe('getUniqueNodeLabel', () => {
 
 describe('initNode', () => {
     it('should set the new node id on the returned data', () => {
-        const result = initNode(makeApiNodeData(), 'node_0')
+        const result = initNode(makeNodeDataBase(), 'node_0')
         expect(result.id).toBe('node_0')
     })
 
     it('should classify whitelisted input types as inputParams (definitions)', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [
                 { id: '', name: 'temp', label: 'Temperature', type: 'number' },
                 { id: '', name: 'model', label: 'Model', type: 'options', default: 'gpt-4' },
@@ -84,7 +84,7 @@ describe('initNode', () => {
     })
 
     it('should generate input param ids using newNodeId, name, and type', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [
                 { id: '', name: 'foo', label: 'Foo', type: 'string' },
                 { id: '', name: 'bar', label: 'Bar', type: 'number' }
@@ -98,7 +98,7 @@ describe('initNode', () => {
     })
 
     it('should classify non-whitelisted input types as inputAnchors', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [
                 { id: '', name: 'llm', label: 'LLM', type: 'BaseChatModel' },
                 { id: '', name: 'memory', label: 'Memory', type: 'BaseMemory' }
@@ -110,7 +110,7 @@ describe('initNode', () => {
     })
 
     it('should split mixed input types between params and anchors', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [
                 { id: '', name: 'temp', label: 'Temperature', type: 'number' },
                 { id: '', name: 'llm', label: 'LLM', type: 'BaseChatModel' },
@@ -124,7 +124,7 @@ describe('initNode', () => {
     })
 
     it('should initialize default values for params', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [
                 { id: '', name: 'temp', label: 'Temperature', type: 'number', default: 0.7 },
                 { id: '', name: 'model', label: 'Model', type: 'string' }
@@ -136,7 +136,7 @@ describe('initNode', () => {
     })
 
     it('should create a single default output anchor for agentflow nodes', () => {
-        const result = initNode(makeApiNodeData({ name: 'llmAgentflow', label: 'LLM' }), 'n1')
+        const result = initNode(makeNodeDataBase({ name: 'llmAgentflow', label: 'LLM' }), 'n1')
         expect(result.outputAnchors).toHaveLength(1)
         expect(result.outputAnchors![0]).toEqual({
             id: 'n1-output-llmAgentflow',
@@ -146,7 +146,7 @@ describe('initNode', () => {
     })
 
     it('should create one output anchor per output entry', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             name: 'testNode',
             label: 'Test Node',
             outputs: [
@@ -169,18 +169,18 @@ describe('initNode', () => {
     })
 
     it('should return empty outputAnchors when hideOutput is true', () => {
-        const nodeData = makeApiNodeData({ hideOutput: true } as Partial<ApiNodeData>)
+        const nodeData = makeNodeDataBase({ hideOutput: true } as Partial<NodeDataBase>)
         const result = initNode(nodeData, 'n1')
         expect(result.outputAnchors).toHaveLength(0)
     })
 
     it('should return empty outputAnchors when isAgentflow is false', () => {
-        const result = initNode(makeApiNodeData(), 'n1', false)
+        const result = initNode(makeNodeDataBase(), 'n1', false)
         expect(result.outputAnchors).toHaveLength(0)
     })
 
     it('should prepend credential param when node has credential property', () => {
-        const nodeData: Partial<ApiNodeData> = {
+        const nodeData: Partial<NodeDataBase> = {
             name: 'testNode',
             label: 'Test',
             inputs: [{ id: '', name: 'temperature', label: 'Temperature', type: 'number', default: 0.9 }],
@@ -191,9 +191,9 @@ describe('initNode', () => {
                 optional: true
             }
         }
-        const apiNodeData = makeApiNodeData(nodeData)
+        const nodeDataBase = makeNodeDataBase(nodeData)
 
-        const result = initNode(apiNodeData, 'n1', false)
+        const result = initNode(nodeDataBase, 'n1', false)
 
         expect(result.inputParams).toHaveLength(2)
         expect(result.inputParams![0]).toEqual(
@@ -209,7 +209,7 @@ describe('initNode', () => {
     })
 
     it('should not add credential param when node has no credential property', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [{ id: '', name: 'temperature', label: 'Temperature', type: 'number' }]
         })
         const result = initNode(nodeData, 'n1', false)
@@ -218,7 +218,7 @@ describe('initNode', () => {
     })
 
     it('should not add credential param when credentialNames is empty', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             inputs: [{ id: '', name: 'temperature', label: 'Temperature', type: 'number' }],
             credential: {
                 label: 'Credential',
@@ -233,14 +233,14 @@ describe('initNode', () => {
     })
 
     it('should strip server-only metadata like filePath from node data', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             filePath: '/some/server/path/Agent.js',
             badge: 'NEW',
             author: 'Flowise',
             documentation: 'https://docs.example.com',
             tags: ['LLM', 'OpenAI'],
             loadMethods: { listModels: () => Promise.resolve([]) }
-        } as Partial<ApiNodeData>)
+        } as Partial<NodeDataBase>)
         const result = initNode(nodeData, 'n1')
         expect(result).not.toHaveProperty('filePath')
         expect(result).not.toHaveProperty('author')
@@ -251,14 +251,14 @@ describe('initNode', () => {
     })
 
     it('should strip runtime-only state from node data', () => {
-        const nodeData = makeApiNodeData({
+        const nodeData = makeNodeDataBase({
             status: 'FINISHED',
             error: 'some error',
             warning: 'some warning',
             hint: 'some hint',
             validationErrors: ['error1'],
             selected: true
-        } as Partial<ApiNodeData>)
+        } as Partial<NodeDataBase>)
         const result = initNode(nodeData, 'n1')
         expect(result).not.toHaveProperty('status')
         expect(result).not.toHaveProperty('error')
@@ -269,7 +269,7 @@ describe('initNode', () => {
     })
 
     it('should generate dynamic outputAnchors for conditionAgentflow nodes', () => {
-        const conditionNodeData = makeApiNodeData({
+        const conditionNodeData = makeNodeDataBase({
             name: 'conditionAgentflow',
             label: 'Condition',
             inputs: [
@@ -300,7 +300,7 @@ describe('initNode', () => {
     })
 
     it('should generate dynamic outputAnchors for conditionAgentAgentflow nodes', () => {
-        const conditionAgentNodeData = makeApiNodeData({
+        const conditionAgentNodeData = makeNodeDataBase({
             name: 'conditionAgentAgentflow',
             label: 'Condition Agent',
             inputs: [

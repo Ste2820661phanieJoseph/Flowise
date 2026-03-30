@@ -3,11 +3,10 @@
 // ============================================================================
 
 /**
- * Raw shape returned by GET /api/v1/nodes.
- * `inputs` here is a schema array (InputParam[]), matching the API response.
- * Use initNode() to transform this into a NodeData for the canvas.
+ * Shared metadata between GET /api/v1/nodes payloads and canvas {@link NodeData}.
+ * Excludes `inputs` (API: schema array vs canvas: value map) and other API-only or canvas-only fields.
  */
-export interface ApiNodeData {
+export interface NodeDefinitionBase {
     name: string
     label: string
     type?: string
@@ -15,7 +14,6 @@ export interface ApiNodeData {
     description?: string
     version?: number
     baseClasses?: string[]
-    inputs?: InputParam[] // Schema array from API
     outputs?: NodeOutput[]
     color?: string
     icon?: string
@@ -24,39 +22,29 @@ export interface ApiNodeData {
     tags?: string[]
     documentation?: string
     credential?: { credentialNames?: string[]; label?: string; type?: string; optional?: boolean }
+    inputAnchors?: InputAnchor[]
+    outputAnchors?: OutputAnchor[]
+    selected?: boolean
     [key: string]: unknown
 }
 
-export interface NodeData {
+/**
+ * Used for GET /api/v1/nodes, the node palette, drag payloads, and `initNode()` → {@link NodeData}.
+ */
+export interface NodeDataBase extends NodeDefinitionBase {
+    inputs?: InputParam[] // Schema array (from API or equivalent definitions)
+}
+
+export interface NodeData extends NodeDefinitionBase {
     id: string
-    name: string
-    label: string
-    type?: string
-    category?: string
-    description?: string
-    version?: number
-    baseClasses?: string[]
-    inputParams?: InputParam[] // Parameter definitions (was: inputs)
-    inputs?: Record<string, unknown> // Actual values entered by users (was: inputValues)
-    outputs?: NodeOutput[]
-    inputAnchors?: InputAnchor[]
-    outputAnchors?: OutputAnchor[]
-    // Visual properties
-    color?: string
-    icon?: string
-    selected?: boolean
-    hideInput?: boolean
-    // Metadata from component definition
-    badge?: string
-    tags?: string[]
-    documentation?: string
+    inputParams?: InputParam[] // Parameter definitions
+    inputs?: Record<string, unknown> // Actual values entered by users
     // Status properties
     status?: 'INPROGRESS' | 'FINISHED' | 'ERROR' | 'STOPPED' | 'TERMINATED'
     error?: string
     warning?: string
     hint?: string
     validationErrors?: string[]
-    [key: string]: unknown
 }
 
 export interface NodeInput {

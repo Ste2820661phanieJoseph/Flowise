@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 
-import type { ApiNodeData, NodeConfigEntry, NodeData } from '@/core/types'
+import type { NodeConfigEntry, NodeData, NodeDataBase } from '@/core/types'
 
 /**
  * Create nodes API functions bound to a client instance
@@ -9,19 +9,19 @@ export function bindNodesApi(client: AxiosInstance) {
     return {
         /**
          * Get all available nodes.
-         * Returns ApiNodeData[] — the raw API shape where inputs is a schema array.
+         * Component definitions from the server (`inputs` is a schema array).
          * Pass results through initNode() to get canvas-ready NodeData.
          */
-        getAllNodes: async (): Promise<ApiNodeData[]> => {
+        getAllNodes: async (): Promise<NodeDataBase[]> => {
             const response = await client.get('/nodes')
             return response.data
         },
 
         /**
          * Get a specific node by name.
-         * Returns ApiNodeData — the raw API shape where inputs is a schema array.
+         * Single component definition (`inputs` is a schema array).
          */
-        getNodeByName: async (name: string): Promise<ApiNodeData> => {
+        getNodeByName: async (name: string): Promise<NodeDataBase> => {
             const response = await client.get(`/nodes/${name}`)
             return response.data
         },

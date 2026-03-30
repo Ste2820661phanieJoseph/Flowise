@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-import type { ApiNodeData, InputParam, NodeData } from '@/core/types'
+import type { InputParam, NodeData, NodeDataBase } from '@/core/types'
 import { useAgentflowContext } from '@/infrastructure/store'
 
 import { useFlowNodes } from './useFlowNodes'
@@ -19,9 +19,9 @@ export function useOpenNodeEditor() {
             const node = state.nodes.find((n) => n.id === nodeId)
             if (!node) return
 
-            // Find the node schema from available nodes (ApiNodeData — inputs is InputParam[])
+            // Find the node schema from available nodes (NodeDataBase — inputs is InputParam[])
             // Fall back to node.data.inputParams when the API schema isn't available
-            const nodeSchema: ApiNodeData | undefined = availableNodes.find((n) => n.name === node.data.name)
+            const nodeSchema: NodeDataBase | undefined = availableNodes.find((n) => n.name === node.data.name)
             const baseParams = nodeSchema?.inputs || node.data.inputParams || []
 
             // The credential field is a separate property on the node schema (not in inputs).

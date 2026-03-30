@@ -7,7 +7,7 @@ import type { ReactFlowInstance } from 'reactflow'
 
 import type { RequestInterceptor } from './api'
 import type { FlowData, FlowDataCallback, FlowNode } from './flow'
-import type { ApiNodeData } from './node'
+import type { NodeDataBase } from './node'
 import type { ValidationResult } from './validation'
 
 // ============================================================================
@@ -23,7 +23,7 @@ export interface HeaderRenderProps {
 }
 
 export interface PaletteRenderProps {
-    availableNodes: ApiNodeData[]
+    availableNodes: NodeDataBase[]
     onAddNode: (nodeType: string, position?: { x: number; y: number }) => void
 }
 

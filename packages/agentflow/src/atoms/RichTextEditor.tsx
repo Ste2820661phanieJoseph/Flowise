@@ -159,7 +159,7 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
     // Sync external value changes into the editor (e.g. when parent state updates)
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
-            editor.commands.setContent(value, {})
+            editor.commands.setContent(value, false)
         }
     }, [editor, value])
 

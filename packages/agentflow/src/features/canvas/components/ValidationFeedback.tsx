@@ -7,7 +7,7 @@ import { IconChecklist, IconExclamationCircle, IconX } from '@tabler/icons-react
 import validateEmptyImage from '@/assets/images/validate_empty.svg'
 import { getAgentflowIcon } from '@/core/node-config'
 import { tokens } from '@/core/theme/tokens'
-import type { ApiNodeData, FlowEdge, FlowNode, ValidationError } from '@/core/types'
+import type { FlowEdge, FlowNode, NodeDataBase, ValidationError } from '@/core/types'
 import { applyValidationErrorsToNodes, validateFlow } from '@/core/validation'
 import { useConfigContext } from '@/infrastructure/store'
 
@@ -24,7 +24,7 @@ interface NodeValidationResult {
 export interface ValidationFeedbackProps {
     nodes: FlowNode[]
     edges: FlowEdge[]
-    availableNodes?: ApiNodeData[]
+    availableNodes?: NodeDataBase[]
     setNodes: React.Dispatch<React.SetStateAction<FlowNode[]>>
 }
 

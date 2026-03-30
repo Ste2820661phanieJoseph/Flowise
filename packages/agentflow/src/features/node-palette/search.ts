@@ -1,4 +1,4 @@
-import type { ApiNodeData } from '@/core'
+import type { NodeDataBase } from '@/core'
 import { groupNodesByCategory } from '@/core'
 
 export { groupNodesByCategory }
@@ -85,7 +85,7 @@ export function fuzzyScore(searchTerm: string, text: string): number {
 /**
  * Score and sort nodes by fuzzy search relevance
  */
-export function searchNodes(nodes: ApiNodeData[], searchValue: string): ApiNodeData[] {
+export function searchNodes(nodes: NodeDataBase[], searchValue: string): NodeDataBase[] {
     // Return all nodes unsorted if search is empty
     if (!searchValue || searchValue.trim() === '') {
         return nodes

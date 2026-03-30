@@ -1,4 +1,4 @@
-import type { ApiNodeData, FlowEdge, FlowNode, NodeData } from '@/core/types'
+import type { FlowEdge, FlowNode, NodeData, NodeDataBase } from '@/core/types'
 
 /**
  * Create a {@link FlowNode} with sensible defaults.
@@ -50,13 +50,13 @@ export const makeNodeData = (overrides?: Partial<NodeData>): NodeData =>
     ({ id: '', name: 'testNode', label: 'Test Node', ...overrides } as NodeData)
 
 /**
- * Create an {@link ApiNodeData} descriptor (raw API response shape).
+ * Create a {@link NodeDataBase} descriptor (component definition / catalog shape).
  *
  * Useful for testing initNode, validateFlow/validateNode (availableNodes), and nodeFactory.
  *
  * @example
- * makeApiNodeData()
- * makeApiNodeData({ name: 'llmAgentflow', inputs: [{ id: '', name: 'temp', label: 'Temperature', type: 'number' }] })
+ * makeNodeDataBase()
+ * makeNodeDataBase({ name: 'llmAgentflow', inputs: [{ id: '', name: 'temp', label: 'Temperature', type: 'number' }] })
  */
-export const makeApiNodeData = (overrides?: Partial<ApiNodeData>): ApiNodeData =>
-    ({ name: 'testNode', label: 'Test Node', ...overrides } as ApiNodeData)
+export const makeNodeDataBase = (overrides?: Partial<NodeDataBase>): NodeDataBase =>
+    ({ name: 'testNode', label: 'Test Node', ...overrides } as NodeDataBase)

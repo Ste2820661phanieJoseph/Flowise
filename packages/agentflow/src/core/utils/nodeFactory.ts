@@ -1,5 +1,5 @@
 import { getDefaultValueForType } from '../primitives'
-import type { ApiNodeData, FlowNode, InputParam, NodeData, OutputAnchor } from '../types'
+import type { FlowNode, InputParam, NodeData, NodeDataBase, OutputAnchor } from '../types'
 
 import { buildDynamicOutputAnchors } from './dynamicOutputAnchors'
 
@@ -21,7 +21,7 @@ export function resolveNodeType(nodeDataType: string): string {
 
 /**
  * Generate a unique node ID based on existing nodes.
- * Accepts both ApiNodeData (from API) and NodeData (canvas nodes).
+ * Accepts both NodeDataBase (from API) and NodeData (canvas nodes).
  */
 export function getUniqueNodeId(nodeData: { name: string }, nodes: FlowNode[]): string {
     let suffix = 0
@@ -37,7 +37,7 @@ export function getUniqueNodeId(nodeData: { name: string }, nodes: FlowNode[]): 
 
 /**
  * Generate a unique node label based on existing nodes.
- * Accepts both ApiNodeData (from API) and NodeData (canvas nodes).
+ * Accepts both NodeDataBase (from API) and NodeData (canvas nodes).
  */
 export function getUniqueNodeLabel(nodeData: { name: string; type?: string; label: string }, nodes: FlowNode[]): string {
     if (nodeData.type === 'StickyNote') return nodeData.label
@@ -71,7 +71,7 @@ function initializeDefaultNodeData(nodeParams: Pick<InputParam, 'name' | 'type' 
 /**
  * Create output anchors for agentflow nodes
  */
-function createAgentFlowOutputs(nodeData: ApiNodeData, newNodeId: string): Array<{ id: string; label: string; name: string }> {
+function createAgentFlowOutputs(nodeData: NodeDataBase, newNodeId: string): Array<{ id: string; label: string; name: string }> {
     if ((nodeData as Record<string, unknown>).hideOutput) return []
 
     if (nodeData.outputs?.length) {
@@ -99,7 +99,7 @@ function createAgentFlowOutputs(nodeData: ApiNodeData, newNodeId: string): Array
  * Preserves component metadata needed at runtime (badge, tags, documentation)
  * for display in the NodeInfoDialog.
  */
-function pickNodeData(raw: ApiNodeData): Partial<NodeData> {
+function pickNodeData(raw: NodeDataBase): Partial<NodeData> {
     return {
         name: raw.name,
         label: raw.label,
@@ -120,10 +120,10 @@ function pickNodeData(raw: ApiNodeData): Partial<NodeData> {
 
 /**
  * Initialize a node with proper anchors and default values.
- * Converts an API response (ApiNodeData, where inputs is a schema array) into a
+ * Converts an API response (NodeDataBase, where inputs is a schema array) into a
  * canvas-ready NodeData (where inputParams is the schema and inputs is key-value values).
  */
-export function initNode(nodeData: ApiNodeData, newNodeId: string, isAgentflow = true): NodeData {
+export function initNode(nodeData: NodeDataBase, newNodeId: string, isAgentflow = true): NodeData {
     const inputAnchors: Array<{ id: string; name: string; label: string; type: string }> = []
     const inputDefinitions: Array<{ id: string; name: string; label: string; type: string; default?: unknown; optional?: boolean }> = []
 
