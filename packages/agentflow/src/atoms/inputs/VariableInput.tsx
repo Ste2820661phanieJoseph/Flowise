@@ -190,12 +190,12 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
         }
     })
 
-    // Load initial content after editor is ready
+    // Sync external value changes into the editor (e.g. when parent state updates)
     useEffect(() => {
-        if (editor && value) {
-            editor.commands.setContent(value)
+        if (editor && value !== editor.getHTML()) {
+            editor.commands.setContent(value, { emitUpdate: false })
         }
-    }, [editor]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [editor, value])
 
     // Sync editable state
     useEffect(() => {
