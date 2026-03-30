@@ -23,7 +23,7 @@ export function resolveNodeType(nodeDataType: string): string {
  * Generate a unique node ID based on existing nodes.
  * Accepts both NodeDataBase (from API) and NodeData (canvas nodes).
  */
-export function getUniqueNodeId(nodeData: { name: string }, nodes: FlowNode[]): string {
+export function getUniqueNodeId(nodeData: Pick<NodeData, 'name'>, nodes: FlowNode[]): string {
     let suffix = 0
     let baseId = `${nodeData.name}_${suffix}`
 
@@ -39,7 +39,7 @@ export function getUniqueNodeId(nodeData: { name: string }, nodes: FlowNode[]): 
  * Generate a unique node label based on existing nodes.
  * Accepts both NodeDataBase (from API) and NodeData (canvas nodes).
  */
-export function getUniqueNodeLabel(nodeData: { name: string; type?: string; label: string }, nodes: FlowNode[]): string {
+export function getUniqueNodeLabel(nodeData: Pick<NodeData, 'name' | 'type' | 'label'>, nodes: FlowNode[]): string {
     if (nodeData.type === 'StickyNote') return nodeData.label
     if (nodeData.name === 'startAgentflow') return nodeData.label
 
@@ -108,7 +108,11 @@ function pickNodeData(raw: NodeDataBase): Partial<NodeData> {
         description: raw.description,
         version: raw.version,
         baseClasses: raw.baseClasses,
+        // API `inputs` (schema) → canvas `inputParams`; `NodeData.inputs` is the value map only.
+        inputParams: raw.inputs,
         outputs: raw.outputs,
+        inputAnchors: raw.inputAnchors,
+        outputAnchors: raw.outputAnchors,
         color: raw.color,
         icon: raw.icon,
         hideInput: raw.hideInput,
