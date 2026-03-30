@@ -88,7 +88,7 @@ export function ConditionBuilder({
             {arrayItems.map((itemValues, index) => {
                 const itemData: NodeData = {
                     ...data,
-                    inputValues: itemValues
+                    inputs: itemValues
                 }
 
                 return (

@@ -22,7 +22,7 @@ import { IconMinus, IconPlus, IconSearch, IconX } from '@tabler/icons-react'
 
 import { MainCard } from '@/atoms'
 import { tokens } from '@/core/theme/tokens'
-import type { ApiNodeData, NodeData } from '@/core/types'
+import type { ApiNodeData } from '@/core/types'
 import { useApiContext } from '@/infrastructure/store'
 
 import { NodeListItem } from './NodeListItem'
@@ -36,9 +36,9 @@ export interface AddNodesDrawerProps {
     /** Available nodes to display */
     nodes: ApiNodeData[]
     /** Callback when a node drag starts */
-    onDragStart?: (event: React.DragEvent, node: NodeData) => void
+    onDragStart?: (event: React.DragEvent, node: ApiNodeData) => void
     /** Callback when a node is clicked (alternative to drag) */
-    onNodeClick?: (node: NodeData) => void
+    onNodeClick?: (node: ApiNodeData) => void
 }
 
 /**
@@ -49,7 +49,7 @@ function AddNodesDrawerComponent({ nodes, onDragStart, onNodeClick }: AddNodesDr
     const { apiBaseUrl } = useApiContext()
 
     const [searchValue, setSearchValue] = useState('')
-    const [filteredNodes, setFilteredNodes] = useState<Record<string, NodeData[]>>({})
+    const [filteredNodes, setFilteredNodes] = useState<Record<string, ApiNodeData[]>>({})
     const [open, setOpen] = useState(false)
     const [categoryExpanded, setCategoryExpanded] = useState<Record<string, boolean>>({})
 
@@ -59,7 +59,7 @@ function AddNodesDrawerComponent({ nodes, onDragStart, onNodeClick }: AddNodesDr
     const drawerMaxHeight = useDrawerMaxHeight(open, paperRef)
 
     // Group nodes by category
-    const groupNodes = useCallback((nodeList: NodeData[], expandAll = false) => {
+    const groupNodes = useCallback((nodeList: ApiNodeData[], expandAll = false) => {
         const grouped = groupNodesByCategory(nodeList)
         setFilteredNodes(grouped)
 
@@ -118,11 +118,11 @@ function AddNodesDrawerComponent({ nodes, onDragStart, onNodeClick }: AddNodesDr
         }))
     }
 
-    const handleDragStart = (event: React.DragEvent, node: NodeData) => {
+    const handleDragStart = (event: React.DragEvent, node: ApiNodeData) => {
         onDragStart?.(event, node)
     }
 
-    const handleNodeClick = (node: NodeData) => {
+    const handleNodeClick = (node: ApiNodeData) => {
         onNodeClick?.(node)
     }
 

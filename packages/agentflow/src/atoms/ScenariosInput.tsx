@@ -87,7 +87,7 @@ export function ScenariosInput({ inputParam, data, disabled = false, onDataChang
             {arrayItems.map((itemValues, index) => {
                 const itemData: NodeData = {
                     ...data,
-                    inputValues: itemValues
+                    inputs: itemValues
                 }
 
                 return (

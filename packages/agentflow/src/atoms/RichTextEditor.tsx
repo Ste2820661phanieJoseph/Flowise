@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 
 import { Box } from '@mui/material'
 import { styled } from '@mui/material/styles'
+import type { CodeBlockLowlightOptions } from '@tiptap/extension-code-block-lowlight'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import Placeholder from '@tiptap/extension-placeholder'
 import { EditorContent, useEditor } from '@tiptap/react'
@@ -40,9 +41,28 @@ export interface RichTextEditorProps {
 // Use .extend() to set enableTabIndentation/tabSize because the v2 types from
 // @tiptap/extension-code-block (peer dep) don't include these v3-only options.
 // See: https://github.com/ueberdosis/tiptap/issues/7613
+const codeBlockLowlightFallback: CodeBlockLowlightOptions = {
+    lowlight,
+    languageClassPrefix: 'language-',
+    exitOnTripleEnter: true,
+    exitOnArrowDown: true,
+    defaultLanguage: null,
+    enableTabIndentation: false,
+    tabSize: 4,
+    HTMLAttributes: {}
+}
+
 const CustomCodeBlock = CodeBlockLowlight.extend({
-    addOptions() {
-        return { ...this.parent?.(), lowlight, enableTabIndentation: true, tabSize: 2 }
+    addOptions(): CodeBlockLowlightOptions {
+        const inherited = this.parent?.()
+        return {
+            ...codeBlockLowlightFallback,
+            ...inherited,
+            lowlight,
+            languageClassPrefix: 'language-',
+            enableTabIndentation: true,
+            tabSize: 2
+        }
     }
 })
 
@@ -168,7 +188,7 @@ export function RichTextEditor({ value, onChange, placeholder, disabled = false,
     // Sync external value changes into the editor (e.g. when parent state updates)
     useEffect(() => {
         if (editor && value !== editor.getHTML()) {
-            editor.commands.setContent(value, false)
+            editor.commands.setContent(value, { emitUpdate: false })
         }
     }, [editor, value])
 

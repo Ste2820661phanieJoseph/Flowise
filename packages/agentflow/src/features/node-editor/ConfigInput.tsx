@@ -20,7 +20,7 @@ export interface ConfigInputProps {
     arrayIndex?: number | null // For array-based configs: the index of the array item.
     parentArrayParam?: InputParam | null // For array-based configs: the parent array param definition.
     onConfigChange: (
-        // Callback to persist config values to the parent node's inputValues.
+        // Callback to persist config values to the parent node's `data.inputs` map.
         configKey: string,
         configValues: Record<string, unknown>,
         arrayContext?: { parentParamName: string; arrayIndex: number }
