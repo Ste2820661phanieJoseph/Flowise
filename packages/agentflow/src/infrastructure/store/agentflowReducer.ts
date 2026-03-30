@@ -1,15 +1,30 @@
-import type { AgentflowAction, AgentflowState, FlowNode } from '@/core/types'
+import type { AgentflowAction, AgentflowState, FlowNode, NodeData } from '@/core/types'
 
 // Node types that size to content; strip stored width/height so they stay content-sized
 const CONTENT_SIZED_NODE_TYPES = new Set(['agentFlow', 'stickyNote'])
 
+/**
+ * Migrate node data from the old SDK field names to the current ones.
+ * Old format: inputs=InputParam[], inputValues=Record<string,unknown>
+ * New format: inputParams=InputParam[], inputs=Record<string,unknown>
+ */
+function migrateNodeData(data: NodeData): NodeData {
+    const d = data as Record<string, unknown>
+    if ('inputValues' in d && !('inputParams' in d)) {
+        const { inputs, inputValues, ...rest } = d
+        return { ...rest, inputParams: inputs, inputs: inputValues } as NodeData
+    }
+    return data
+}
+
 export function normalizeNodes(nodes: FlowNode[]): FlowNode[] {
     return nodes.map((node) => {
+        const migratedData = migrateNodeData(node.data)
         if (CONTENT_SIZED_NODE_TYPES.has(node.type)) {
-            const { width: _width, height: _height, ...rest } = node
+            const { width: _width, height: _height, ...rest } = { ...node, data: migratedData }
             return rest as FlowNode
         }
-        return node
+        return { ...node, data: migratedData }
     })
 }
 

@@ -22,7 +22,7 @@ import { IconMinus, IconPlus, IconSearch, IconX } from '@tabler/icons-react'
 
 import { MainCard } from '@/atoms'
 import { tokens } from '@/core/theme/tokens'
-import type { NodeData } from '@/core/types'
+import type { ApiNodeData, NodeData } from '@/core/types'
 import { useApiContext } from '@/infrastructure/store'
 
 import { NodeListItem } from './NodeListItem'
@@ -34,7 +34,7 @@ const Z_INDEX_DRAWER = 1000
 
 export interface AddNodesDrawerProps {
     /** Available nodes to display */
-    nodes: NodeData[]
+    nodes: ApiNodeData[]
     /** Callback when a node drag starts */
     onDragStart?: (event: React.DragEvent, node: NodeData) => void
     /** Callback when a node is clicked (alternative to drag) */

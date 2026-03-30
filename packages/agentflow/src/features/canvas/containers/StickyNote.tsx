@@ -21,7 +21,7 @@ function StickyNoteComponent({ data }: StickyNoteProps) {
     const { updateNodeData } = useAgentflowContext()
     const ref = useRef<HTMLDivElement>(null)
 
-    const [inputParam] = data.inputs || []
+    const [inputParam] = data.inputParams || []
     const [isHovered, setIsHovered] = useState(false)
 
     const { stateColor, backgroundColor } = useNodeColors({

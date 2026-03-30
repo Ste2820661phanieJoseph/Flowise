@@ -2,6 +2,31 @@
 // Node & Edge Data Types
 // ============================================================================
 
+/**
+ * Raw shape returned by GET /api/v1/nodes.
+ * `inputs` here is a schema array (InputParam[]), matching the API response.
+ * Use initNode() to transform this into a NodeData for the canvas.
+ */
+export interface ApiNodeData {
+    name: string
+    label: string
+    type?: string
+    category?: string
+    description?: string
+    version?: number
+    baseClasses?: string[]
+    inputs?: InputParam[] // Schema array from API
+    outputs?: NodeOutput[]
+    color?: string
+    icon?: string
+    hideInput?: boolean
+    badge?: string
+    tags?: string[]
+    documentation?: string
+    credential?: { credentialNames?: string[]; label?: string; type?: string; optional?: boolean }
+    [key: string]: unknown
+}
+
 export interface NodeData {
     id: string
     name: string
@@ -11,8 +36,8 @@ export interface NodeData {
     description?: string
     version?: number
     baseClasses?: string[]
-    inputs?: InputParam[] // Parameter definitions from API
-    inputValues?: Record<string, unknown> // Actual values entered by users
+    inputParams?: InputParam[] // Parameter definitions (was: inputs)
+    inputs?: Record<string, unknown> // Actual values entered by users (was: inputValues)
     outputs?: NodeOutput[]
     inputAnchors?: InputAnchor[]
     outputAnchors?: OutputAnchor[]
