@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 
-import type { VariableItem } from '@/atoms/SelectVariable'
+import type { VariableItem } from '@/atoms/inputs/VariablePicker'
 import { getUpstreamNodes } from '@/core/utils/variableUtils'
 import { useAgentflowContext } from '@/infrastructure/store'
 
-// ── Static global variables (matches original SelectVariable.jsx) ───────────
+// ── Static global variables (matches original suggestionOption.js) ───────────
 
 const GLOBAL_VARIABLES: VariableItem[] = [
     { label: 'question', description: "User's question from chatbox", category: 'Chat Context', value: '{{question}}' },
@@ -60,7 +60,7 @@ const GLOBAL_VARIABLES: VariableItem[] = [
  * - Flow state variables (from startAgentflow node's startState)
  *
  * Lives in the features layer so it can read from AgentflowContext.
- * The returned items are passed to the SelectVariable atom via props.
+ * The returned items are passed to the VariablePicker atom via props.
  */
 export function useAvailableVariables(nodeId: string): VariableItem[] {
     const { state } = useAgentflowContext()

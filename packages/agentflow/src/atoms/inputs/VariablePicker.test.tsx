@@ -2,15 +2,14 @@ import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
-import type { VariableItem } from '@/atoms/SelectVariable'
-
+import type { VariableItem } from './VariablePicker'
 import { VariablePicker } from './VariablePicker'
 
 const theme = createTheme()
 
 function renderPicker(props: Partial<React.ComponentProps<typeof VariablePicker>> = {}) {
     const defaultProps = {
-        variables: [] as VariableItem[],
+        items: [] as VariableItem[],
         onSelect: jest.fn(),
         ...props
     }
@@ -30,29 +29,29 @@ const VARIABLES: VariableItem[] = [
 
 describe('VariablePicker', () => {
     it('renders null when disabled', () => {
-        const { container } = renderPicker({ variables: VARIABLES, disabled: true })
+        const { container } = renderPicker({ items: VARIABLES, disabled: true })
         expect(container.innerHTML).toBe('')
     })
 
-    it('renders null when variables array is empty', () => {
-        const { container } = renderPicker({ variables: [] })
+    it('renders null when items array is empty', () => {
+        const { container } = renderPicker({ items: [] })
         expect(container.innerHTML).toBe('')
     })
 
     it('renders the "Select Variable" heading', () => {
-        renderPicker({ variables: VARIABLES })
+        renderPicker({ items: VARIABLES })
         expect(screen.getByText('Select Variable')).toBeInTheDocument()
     })
 
     it('renders category headers', () => {
-        renderPicker({ variables: VARIABLES })
+        renderPicker({ items: VARIABLES })
         expect(screen.getByText('Chat Context')).toBeInTheDocument()
         expect(screen.getByText('Node Outputs')).toBeInTheDocument()
         expect(screen.getByText('Flow State')).toBeInTheDocument()
     })
 
     it('renders variable labels and descriptions', () => {
-        renderPicker({ variables: VARIABLES })
+        renderPicker({ items: VARIABLES })
         expect(screen.getByText('question')).toBeInTheDocument()
         expect(screen.getByText("User's question from chatbox")).toBeInTheDocument()
         expect(screen.getByText('chat_history')).toBeInTheDocument()
@@ -61,7 +60,7 @@ describe('VariablePicker', () => {
     })
 
     it('groups items by category', () => {
-        renderPicker({ variables: VARIABLES })
+        renderPicker({ items: VARIABLES })
         // Chat Context should contain both question and chat_history
         const listItems = screen.getAllByRole('button')
         expect(listItems).toHaveLength(4)
@@ -70,7 +69,7 @@ describe('VariablePicker', () => {
     it('calls onSelect with the variable value when item is clicked', async () => {
         const user = userEvent.setup()
         const onSelect = jest.fn()
-        renderPicker({ variables: VARIABLES, onSelect })
+        renderPicker({ items: VARIABLES, onSelect })
 
         await user.click(screen.getByText('question'))
         expect(onSelect).toHaveBeenCalledWith('{{question}}')
@@ -79,7 +78,7 @@ describe('VariablePicker', () => {
     it('calls onSelect with the correct value for each item', async () => {
         const user = userEvent.setup()
         const onSelect = jest.fn()
-        renderPicker({ variables: VARIABLES, onSelect })
+        renderPicker({ items: VARIABLES, onSelect })
 
         await user.click(screen.getByText('$flow.state.count'))
         expect(onSelect).toHaveBeenCalledWith('$flow.state.count')
@@ -87,7 +86,7 @@ describe('VariablePicker', () => {
 
     it('uses "Other" category for items without a category', () => {
         const items: VariableItem[] = [{ label: 'custom', description: 'A custom var', value: '{{custom}}' }]
-        renderPicker({ variables: items })
+        renderPicker({ items })
         expect(screen.getByText('Other')).toBeInTheDocument()
         expect(screen.getByText('custom')).toBeInTheDocument()
     })

@@ -23,14 +23,14 @@ import type { InputAnchor, InputParam, NodeData } from '@/core/types'
 
 import { SuggestionItem } from './inputs/SuggestionDropdown'
 import { VariableInput } from './inputs/VariableInput'
+import type { VariableItem } from './inputs/VariablePicker'
+import { VariablePicker } from './inputs/VariablePicker'
 import ArrayInput from './ArrayInput'
 import { CodeInput } from './CodeInput'
 import { Dropdown } from './Dropdown'
 import { ExpandTextDialog } from './ExpandTextDialog'
 import { JsonInput } from './JsonInput'
 import { RichTextEditor } from './RichTextEditor.lazy'
-import type { VariableItem } from './SelectVariable'
-import { SelectVariable } from './SelectVariable'
 import { SwitchInput } from './SwitchInput'
 import { TooltipWithParser } from './TooltipWithParser'
 
@@ -88,7 +88,7 @@ export interface NodeInputHandlerProps {
     arrayIndex?: number | null
     /** For array-based configs: the parent array InputParam definition. */
     parentArrayParam?: InputParam | null
-    /** Variable items for the SelectVariable popover (injected from features layer). */
+    /** Variable items for the VariablePicker popover (injected from features layer). */
     variableItems?: VariableItem[]
 }
 
@@ -527,7 +527,7 @@ export function NodeInputHandler({
                     transformOrigin={{ vertical: 'top', horizontal: 'right' }}
                     slotProps={{ paper: { sx: { width: 320, maxHeight: 400 } } }}
                 >
-                    <SelectVariable items={variableItems!} onSelect={handleVariableSelect} />
+                    <VariablePicker items={variableItems!} onSelect={handleVariableSelect} />
                 </Popover>
             )}
 

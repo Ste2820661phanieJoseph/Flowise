@@ -3,10 +3,15 @@ import { useMemo } from 'react'
 import { Box, Divider, List, ListItem, ListItemAvatar, ListItemButton, ListItemText, Stack, Typography } from '@mui/material'
 import { IconBinaryTree, IconHistory, IconMessageChatbot, IconPaperclip } from '@tabler/icons-react'
 
-import type { VariableItem } from '@/atoms/SelectVariable'
+export interface VariableItem {
+    label: string
+    description?: string
+    category?: string
+    value: string
+}
 
 export interface VariablePickerProps {
-    variables: VariableItem[]
+    items: VariableItem[]
     onSelect: (variableString: string) => void
     disabled?: boolean
 }
@@ -21,13 +26,14 @@ const DEFAULT_STYLE = { icon: IconPaperclip, color: '#90A4AE' }
 
 /**
  * Grouped variable picker panel. Shows variables organized by category with
- * section headers — an enhanced version of SelectVariable for the side-panel context.
+ * section headers and colored icons. Used in popovers (e.g. JSON editor per-key
+ * injection, non-TipTap variable selection).
  */
-export function VariablePicker({ variables, onSelect, disabled = false }: VariablePickerProps) {
+export function VariablePicker({ items, onSelect, disabled = false }: VariablePickerProps) {
     const grouped = useMemo(() => {
         const groups: { category: string; items: VariableItem[] }[] = []
         const seen = new Map<string, VariableItem[]>()
-        for (const item of variables) {
+        for (const item of items) {
             const cat = item.category ?? 'Other'
             if (!seen.has(cat)) {
                 const arr: VariableItem[] = []
@@ -37,9 +43,9 @@ export function VariablePicker({ variables, onSelect, disabled = false }: Variab
             seen.get(cat)!.push(item)
         }
         return groups
-    }, [variables])
+    }, [items])
 
-    if (disabled || variables.length === 0) return null
+    if (disabled || items.length === 0) return null
 
     return (
         <div style={{ flex: 30 }}>
