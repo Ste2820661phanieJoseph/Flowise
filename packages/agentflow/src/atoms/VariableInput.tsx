@@ -162,7 +162,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
                               return [
                                   'span',
                                   mergeAttributes(this.HTMLAttributes ?? {}, options.HTMLAttributes),
-                                  `${options.suggestion?.char ?? '{{'}${node.attrs.label ?? node.attrs.id}}}`
+                                  `${options.suggestion?.char ?? '{{'}${node.attrs.label ?? node.attrs.id} }}`
                               ]
                           },
                           suggestion: suggestionConfig,
@@ -176,7 +176,7 @@ export function VariableInput({ value, onChange, placeholder, disabled = false, 
 
     const editor = useEditor({
         extensions,
-        content: '',
+        content: value || '',
         editable: !disabled,
         onUpdate: ({ editor: ed }) => {
             // Always use HTML serialization. The @tiptap/markdown v3 getMarkdown()
