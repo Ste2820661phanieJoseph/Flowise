@@ -1,4 +1,4 @@
-import { makeFlowEdge, makeFlowNode, makeNodeDataBase } from '@test-utils/factories'
+import { makeFlowEdge, makeFlowNode, makeNodeDataSchema } from '@test-utils/factories'
 
 import type { FlowEdge, FlowNode } from '../types'
 
@@ -350,7 +350,7 @@ describe('validateNode', () => {
     // --- availableNodes schema fallback ---
     it('should use availableNodes input definitions when node.data.inputParams is missing', () => {
         const availableNodes = [
-            makeNodeDataBase({
+            makeNodeDataSchema({
                 name: 'llmAgentflow',
                 inputs: [{ id: 'p1', name: 'model', label: 'Model', type: 'string', optional: false }]
             })
@@ -371,7 +371,7 @@ describe('validateNode', () => {
 
     it('should prefer availableNodes schema over node.data.inputParams', () => {
         const availableNodes = [
-            makeNodeDataBase({
+            makeNodeDataSchema({
                 name: 'llmAgentflow',
                 inputs: [
                     { id: 'p1', name: 'model', label: 'Model', type: 'string', optional: false },
@@ -398,7 +398,7 @@ describe('validateNode', () => {
     // --- Nested config validation ---
     it('should validate nested component config required fields', () => {
         const availableNodes = [
-            makeNodeDataBase({
+            makeNodeDataSchema({
                 name: 'openAIChat',
                 inputs: [{ id: 'ak', name: 'apiKey', label: 'API Key', type: 'string', optional: false }]
             })

@@ -31,7 +31,7 @@ export interface NodeDefinitionBase {
 /**
  * Used for GET /api/v1/nodes, the node palette, drag payloads, and `initNode()` → {@link NodeData}.
  */
-export interface NodeDataBase extends NodeDefinitionBase {
+export interface NodeDataSchema extends NodeDefinitionBase {
     inputs?: InputParam[] // Schema array (from API or equivalent definitions)
 }
 

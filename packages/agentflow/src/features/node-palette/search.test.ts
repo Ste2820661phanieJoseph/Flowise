@@ -1,4 +1,4 @@
-import { makeNodeDataBase } from '@test-utils/factories'
+import { makeNodeDataSchema } from '@test-utils/factories'
 
 import { debounce, fuzzyScore, searchNodes } from './search'
 
@@ -68,7 +68,7 @@ describe('fuzzyScore', () => {
 
 describe('searchNodes', () => {
     const makeNode = (name: string, label: string, category?: string, description?: string) =>
-        makeNodeDataBase({ name, label, category, description })
+        makeNodeDataSchema({ name, label, category, description })
 
     const nodes = [
         makeNode('llmAgentflow', 'LLM', 'Agent Flows', 'Language model node'),

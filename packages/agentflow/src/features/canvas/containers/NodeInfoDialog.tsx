@@ -22,7 +22,7 @@ import {
 } from '@mui/material'
 import { IconBook2, IconInfoCircle } from '@tabler/icons-react'
 
-import type { NodeConfigEntry, NodeData, NodeDataBase } from '@/core/types'
+import type { NodeConfigEntry, NodeData, NodeDataSchema } from '@/core/types'
 import { useApiContext } from '@/infrastructure/store'
 
 import { renderNodeIcon } from '../nodeIcons'
@@ -84,7 +84,7 @@ function SchemaTooltipContent({ schema }: { schema: NodeConfigEntry['schema'] })
 function NodeInfoDialogComponent({ open, onClose, data }: NodeInfoDialogProps) {
     const { nodesApi, apiBaseUrl } = useApiContext()
     const [nodeConfig, setNodeConfig] = useState<NodeConfigEntry[]>([])
-    const [componentDef, setComponentDef] = useState<NodeDataBase | null>(null)
+    const [componentDef, setComponentDef] = useState<NodeDataSchema | null>(null)
 
     const fetchData = useCallback(async () => {
         if (!data) return

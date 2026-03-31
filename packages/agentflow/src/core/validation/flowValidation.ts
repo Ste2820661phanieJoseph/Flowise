@@ -1,4 +1,4 @@
-import type { FlowEdge, FlowNode, NodeDataBase, ValidationError, ValidationResult } from '../types'
+import type { FlowEdge, FlowNode, NodeDataSchema, ValidationError, ValidationResult } from '../types'
 import { evaluateParamVisibility } from '../utils/fieldVisibility'
 
 /** Check if a value is empty (null, undefined, empty string, or empty rich text) */
@@ -9,7 +9,7 @@ function isEmptyValue(value: unknown): boolean {
 /**
  * Validate the flow structure
  */
-export function validateFlow(nodes: FlowNode[], edges: FlowEdge[], availableNodes?: NodeDataBase[]): ValidationResult {
+export function validateFlow(nodes: FlowNode[], edges: FlowEdge[], availableNodes?: NodeDataSchema[]): ValidationResult {
     const errors: ValidationError[] = []
 
     // Check for empty flow
@@ -172,7 +172,7 @@ function detectHangingEdges(nodes: FlowNode[], edges: FlowEdge[]): ValidationErr
  * @param availableNodes Component definitions (not flow node instances) used to look up
  *   nested config schemas via `availableNodes.find(n => n.name === componentName)`.
  */
-export function validateNode(node: FlowNode, availableNodes?: NodeDataBase[]): ValidationError[] {
+export function validateNode(node: FlowNode, availableNodes?: NodeDataSchema[]): ValidationError[] {
     const errors: ValidationError[] = []
 
     // Check required fields
@@ -247,7 +247,7 @@ export function validateNode(node: FlowNode, availableNodes?: NodeDataBase[]): V
             const componentDef = availableNodes.find((n) => n.name === componentName)
             if (componentDef?.inputs) {
                 for (const componentParam of componentDef.inputs) {
-                    // NodeDataBase.inputs is InputParam[]
+                    // NodeDataSchema.inputs is InputParam[]
                     if (!evaluateParamVisibility(componentParam, configValue)) continue
 
                     if (!componentParam.optional) {
