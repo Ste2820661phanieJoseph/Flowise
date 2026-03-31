@@ -156,7 +156,7 @@ function EditNodeDialogComponent({ show, dialogProps, onCancel }: EditNodeDialog
             // onCustomDataChange calls (e.g., triggered by VariableInput's onUpdate
             // on mount) preserve the defaults for visibility evaluation.
             if (dialogProps.data) {
-                setData({ ...dialogProps.data, inputValues: initialValues })
+                setData({ ...dialogProps.data, inputs: initialValues })
                 if (dialogProps.data.label) setNodeName(dialogProps.data.label)
             }
         } else if (dialogProps.data) {
