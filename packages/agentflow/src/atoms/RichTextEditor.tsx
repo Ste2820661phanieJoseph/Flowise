@@ -37,9 +37,18 @@ export interface RichTextEditorProps {
 
 /* ── TipTap extensions (no mention/variable support — that belongs in features/) ── */
 
+// Use .extend() to set enableTabIndentation/tabSize because the v2 types from
+// @tiptap/extension-code-block (peer dep) don't include these v3-only options.
+// See: https://github.com/ueberdosis/tiptap/issues/7613
+const CustomCodeBlock = CodeBlockLowlight.extend({
+    addOptions() {
+        return { ...this.parent?.(), lowlight, enableTabIndentation: true, tabSize: 2 }
+    }
+})
+
 const buildExtensions = (placeholder?: string) => [
     StarterKit.configure({ codeBlock: false }),
-    CodeBlockLowlight.configure({ lowlight }),
+    CustomCodeBlock,
     ...(placeholder ? [Placeholder.configure({ placeholder })] : [])
 ]
 
