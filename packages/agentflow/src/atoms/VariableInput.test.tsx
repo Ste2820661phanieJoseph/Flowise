@@ -1,5 +1,6 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles'
 import { render, screen } from '@testing-library/react'
+import * as TiptapReact from '@tiptap/react'
 
 import { VariableInput, type VariableInputProps } from './VariableInput'
 
@@ -66,5 +67,21 @@ describe('VariableInput', () => {
         renderVariableInput({ disabled: true })
 
         expect(screen.getByTestId('variable-input')).toBeInTheDocument()
+    })
+
+    it('initialises the editor with the provided value', () => {
+        // Verify the editor is created with content matching the value prop, so
+        // the editor is not empty on the first render before the sync useEffect fires.
+        const useEditorSpy = jest.spyOn(TiptapReact, 'useEditor')
+        renderVariableInput({ value: 'Hello world' })
+        expect(useEditorSpy).toHaveBeenCalledWith(expect.objectContaining({ content: 'Hello world' }))
+        useEditorSpy.mockRestore()
+    })
+
+    it('initialises the editor with empty string when value is empty', () => {
+        const useEditorSpy = jest.spyOn(TiptapReact, 'useEditor')
+        renderVariableInput({ value: '' })
+        expect(useEditorSpy).toHaveBeenCalledWith(expect.objectContaining({ content: '' }))
+        useEditorSpy.mockRestore()
     })
 })
