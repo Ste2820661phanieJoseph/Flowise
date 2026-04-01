@@ -1,13 +1,15 @@
 import { Request, Response, NextFunction } from 'express'
 import _ from 'lodash'
 import nodesService from '../../services/nodes'
+import { ClientType } from 'flowise-components'
 import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 import { StatusCodes } from 'http-status-codes'
 import { getWorkspaceSearchOptionsFromReq } from '../../enterprise/utils/ControllerServiceUtils'
 
 const getAllNodes = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const apiResponse = await nodesService.getAllNodes()
+        const client = req.query.client as ClientType | undefined
+        const apiResponse = await nodesService.getAllNodes(client)
         return res.json(apiResponse)
     } catch (error) {
         next(error)
@@ -19,7 +21,8 @@ const getNodeByName = async (req: Request, res: Response, next: NextFunction) =>
         if (typeof req.params === 'undefined' || !req.params.name) {
             throw new InternalFlowiseError(StatusCodes.PRECONDITION_FAILED, `Error: nodesController.getNodeByName - name not provided!`)
         }
-        const apiResponse = await nodesService.getNodeByName(req.params.name)
+        const client = req.query.client as ClientType | undefined
+        const apiResponse = await nodesService.getNodeByName(req.params.name, client)
         return res.json(apiResponse)
     } catch (error) {
         next(error)
@@ -35,7 +38,8 @@ const getNodesByCategory = async (req: Request, res: Response, next: NextFunctio
             )
         }
         const name = _.unescape(req.params.name)
-        const apiResponse = await nodesService.getAllNodesForCategory(name)
+        const client = req.query.client as ClientType | undefined
+        const apiResponse = await nodesService.getAllNodesForCategory(name, client)
         return res.json(apiResponse)
     } catch (error) {
         next(error)
