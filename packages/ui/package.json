@@ -26,6 +26,7 @@
         "@mui/x-tree-view": "^7.25.0",
         "@reduxjs/toolkit": "^2.2.7",
         "@tabler/icons-react": "^3.30.0",
+        "@tiptap/core": "^3.20.4",
         "@tiptap/extension-code-block-lowlight": "^3.20.4",
         "@tiptap/extension-mention": "^3.20.4",
         "@tiptap/extension-placeholder": "^3.20.4",
