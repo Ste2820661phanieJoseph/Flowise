@@ -10,29 +10,6 @@ import { getErrorMessage } from '../../errors/utils'
 import { OMIT_QUEUE_JOB_DATA } from '../../utils/constants'
 import { executeCustomNodeFunction } from '../../utils/executeCustomNodeFunction'
 
-/** Filter node inputs by client. Params/options with a `client` array that excludes the requesting client are removed. No-ops when client is omitted. */
-export const filterNodeByClient = (node: INode, client?: ClientType): INode => {
-    if (!client || !node.inputs) return node
-
-    const filterParam = (param: INodeParams): INodeParams => {
-        const filtered: INodeParams = { ...param }
-        if (filtered.options) {
-            filtered.options = filtered.options.filter((opt: INodeOptionsValue) => !opt.client || opt.client.includes(client))
-        }
-        if (filtered.tabs) {
-            filtered.tabs = filtered.tabs.filter((t) => !t.client || t.client.includes(client)).map(filterParam)
-        }
-        if (filtered.array) {
-            filtered.array = filtered.array.filter((a) => !a.client || a.client.includes(client)).map(filterParam)
-        }
-        return filtered
-    }
-
-    node.inputs = (node.inputs as INodeParams[]).filter((param) => !param.client || param.client.includes(client)).map(filterParam)
-
-    return node
-}
-
 // Get all component nodes
 const getAllNodes = async (client?: ClientType) => {
     try {
@@ -173,6 +150,29 @@ const executeCustomFunction = async (requestBody: any, workspaceId?: string, org
     } else {
         return await executeCustomNodeFunction(executeData)
     }
+}
+
+// Filter node inputs by client. Params/options with a `client` array that excludes the requesting client are removed. No-ops when client is omitted.
+export const filterNodeByClient = (node: INode, client?: ClientType): INode => {
+    if (!client || !node.inputs) return node
+
+    const filterParam = (param: INodeParams): INodeParams => {
+        const filtered: INodeParams = { ...param }
+        if (filtered.options) {
+            filtered.options = filtered.options.filter((opt: INodeOptionsValue) => !opt.client || opt.client.includes(client))
+        }
+        if (filtered.tabs) {
+            filtered.tabs = filtered.tabs.filter((t) => !t.client || t.client.includes(client)).map(filterParam)
+        }
+        if (filtered.array) {
+            filtered.array = filtered.array.filter((a) => !a.client || a.client.includes(client)).map(filterParam)
+        }
+        return filtered
+    }
+
+    node.inputs = (node.inputs as INodeParams[]).filter((param) => !param.client || param.client.includes(client)).map(filterParam)
+
+    return node
 }
 
 export default {
