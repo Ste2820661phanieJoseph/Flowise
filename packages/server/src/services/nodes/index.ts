@@ -170,9 +170,9 @@ export const filterNodeByClient = (node: INode, client?: ClientType): INode => {
         return filtered
     }
 
-    node.inputs = (node.inputs as INodeParams[]).filter((param) => !param.client || param.client.includes(client)).map(filterParam)
+    const filteredInputs = (node.inputs as INodeParams[]).filter((param) => !param.client || param.client.includes(client)).map(filterParam)
 
-    return node
+    return { ...node, inputs: filteredInputs }
 }
 
 export default {

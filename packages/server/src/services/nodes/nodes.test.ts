@@ -177,4 +177,18 @@ describe('filterNodeByClient', () => {
             expect(result.inputs![0].array![0].name).toBe('key')
         })
     })
+
+    describe('immutability', () => {
+        it('does not mutate the original node', () => {
+            const node = makeNode({
+                inputs: [
+                    { label: 'Webhook Trigger', name: 'webhookTrigger', type: 'string', client: ['agentflowv2'] },
+                    { label: 'Ephemeral Memory', name: 'startEphemeralMemory', type: 'boolean' }
+                ]
+            })
+            const result = filterNodeByClient(node, 'agentflowsdk')
+            expect(node.inputs).toHaveLength(2)
+            expect(result.inputs).toHaveLength(1)
+        })
+    })
 })

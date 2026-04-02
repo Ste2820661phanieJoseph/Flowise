@@ -31,6 +31,8 @@ export type ImageDetail = 'auto' | 'low' | 'high'
 
 export type ClientType = 'agentflowv2' | 'agentflowsdk'
 
+export const VALID_CLIENT_TYPES = new Set<ClientType>(['agentflowv2', 'agentflowsdk'])
+
 /**
  * Others
  */
