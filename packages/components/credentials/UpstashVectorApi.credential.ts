@@ -15,7 +15,7 @@ class UpstashVectorApi implements INodeCredential {
             {
                 label: 'Upstash Vector REST URL',
                 name: 'UPSTASH_VECTOR_REST_URL',
-                type: 'string'
+                type: 'password'
             },
             {
                 label: 'Upstash Vector REST Token',

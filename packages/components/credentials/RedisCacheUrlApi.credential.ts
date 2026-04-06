@@ -15,7 +15,7 @@ class RedisCacheUrlApi implements INodeCredential {
             {
                 label: 'Redis URL',
                 name: 'redisUrl',
-                type: 'string',
+                type: 'password',
                 default: 'redis://localhost:6379'
             }
         ]

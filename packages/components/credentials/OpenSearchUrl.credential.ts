@@ -15,7 +15,7 @@ class OpenSearchUrl implements INodeCredential {
             {
                 label: 'OpenSearch Url',
                 name: 'openSearchUrl',
-                type: 'string'
+                type: 'password'
             },
             {
                 label: 'User',
