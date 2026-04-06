@@ -129,6 +129,7 @@ export class App {
 
             // Initialize SSE Streamer
             this.sseStreamer = new SSEStreamer()
+            this.sseStreamer.startHeartbeat()
             logger.info('🌊 [server]: SSE Streamer initialized successfully')
 
             // Init Queues
@@ -149,6 +150,7 @@ export class App {
 
                 this.redisSubscriber = new RedisEventSubscriber(this.sseStreamer)
                 await this.redisSubscriber.connect()
+                this.redisSubscriber.startPeriodicCleanup()
                 logger.info('🔗 [server]: Redis event subscriber connected successfully')
             }
 
@@ -209,11 +211,6 @@ export class App {
 
         // Add the sanitizeMiddleware to guard against XSS
         this.app.use(sanitizeMiddleware)
-
-        this.app.use((req, res, next) => {
-            res.header('Access-Control-Allow-Credentials', 'true') // Allow credentials (cookies, etc.)
-            if (next) next()
-        })
 
         const denylistURLs = process.env.DENYLIST_URLS ? process.env.DENYLIST_URLS.split(',') : []
         const whitelistURLs = WHITELIST_URLS.filter((url) => !denylistURLs.includes(url))
@@ -366,6 +363,7 @@ export class App {
 
     async stopApp() {
         try {
+            this.sseStreamer.stopHeartbeat()
             const removePromises: any[] = []
             removePromises.push(this.telemetry.flush())
             if (this.queueManager) {
