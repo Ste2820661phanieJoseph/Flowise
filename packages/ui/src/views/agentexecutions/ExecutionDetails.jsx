@@ -746,7 +746,15 @@ export const ExecutionDetails = ({ open, isPublic, execution, metadata, onClose,
                                 variant='outlined'
                                 label={localMetadata?.agentflow?.name || localMetadata?.agentflow?.id || 'Go to AgentFlow'}
                                 className={'button'}
-                                onClick={() => window.open(`/v2/agentcanvas/${localMetadata?.agentflow?.id}`, '_blank')}
+                                onClick={() => {
+                                    const agentflowType = localMetadata?.agentflow?.type
+                                    const agentflowId = localMetadata?.agentflow?.id
+                                    if (agentflowType === 'AGENT' || agentflowType === 'ASSISTANT') {
+                                        window.open(`/agents/${agentflowId}`, '_blank')
+                                    } else {
+                                        window.open(`/v2/agentcanvas/${agentflowId}`, '_blank')
+                                    }
+                                }}
                             />
                         )}
 

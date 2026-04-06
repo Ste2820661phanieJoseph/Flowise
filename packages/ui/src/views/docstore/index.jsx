@@ -325,7 +325,7 @@ const Documents = () => {
                         search={hasDocStores}
                         searchPlaceholder='Search Name'
                         title='Document Store'
-                        description='Store and upsert documents for LLM retrieval (RAG)'
+                        description='Manage and upsert documents for Retrieval-Augmented Generation (RAG)'
                     >
                         {hasDocStores && (
                             <ToggleButtonGroup

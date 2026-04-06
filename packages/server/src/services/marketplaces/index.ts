@@ -110,21 +110,35 @@ const getAllTemplates = async () => {
             }
             templates.push(template)
         })
+        // Scan Agent templates
+        const agentsDir = path.join(__dirname, '..', '..', '..', 'marketplaces', 'agents')
+        if (fs.existsSync(agentsDir)) {
+            const agentJsons = fs.readdirSync(agentsDir).filter((file) => path.extname(file) === '.json')
+            agentJsons.forEach((file) => {
+                const filePath = path.join(agentsDir, file)
+                const fileData = fs.readFileSync(filePath)
+                const fileDataObj = JSON.parse(fileData.toString())
+                const template = {
+                    id: uuidv4(),
+                    templateName: file.split('.json')[0],
+                    flowData: fileData.toString(),
+                    badge: fileDataObj?.badge,
+                    framework: fileDataObj?.framework,
+                    usecases: fileDataObj?.usecases,
+                    categories: getCategories(fileDataObj),
+                    type: 'Agent',
+                    description: fileDataObj?.description || ''
+                }
+                templates.push(template)
+            })
+        }
+
         const sortedTemplates = templates.sort((a, b) => {
-            // Prioritize AgentflowV2 templates first
-            if (a.type === 'AgentflowV2' && b.type !== 'AgentflowV2') {
-                return -1
-            }
-            if (b.type === 'AgentflowV2' && a.type !== 'AgentflowV2') {
-                return 1
-            }
-            // Put Tool templates last
-            if (a.type === 'Tool' && b.type !== 'Tool') {
-                return 1
-            }
-            if (b.type === 'Tool' && a.type !== 'Tool') {
-                return -1
-            }
+            // Prioritize Agent and AgentflowV2 templates first
+            const priority: Record<string, number> = { Agent: 0, AgentflowV2: 1, Chatflow: 2, Agentflow: 3, Tool: 4 }
+            const aPriority = priority[a.type] ?? 3
+            const bPriority = priority[b.type] ?? 3
+            if (aPriority !== bPriority) return aPriority - bPriority
             // For same types, sort alphabetically by templateName
             return a.templateName.localeCompare(b.templateName)
         })

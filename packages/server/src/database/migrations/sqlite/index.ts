@@ -51,6 +51,7 @@ import { AddSSOColumns1730519457880 } from '../../../enterprise/database/migrati
 import { AddPersonalWorkspace1734074497540 } from '../../../enterprise/database/migrations/sqlite/1734074497540-AddPersonalWorkspace'
 import { RefactorEnterpriseDatabase1737076223692 } from '../../../enterprise/database/migrations/sqlite/1737076223692-RefactorEnterpriseDatabase'
 import { ExecutionLinkWorkspaceId1746862866554 } from '../../../enterprise/database/migrations/sqlite/1746862866554-ExecutionLinkWorkspaceId'
+import { AddAgentsPermission1775497538678 } from './1775497538678-AddAgentsPermission'
 
 export const sqliteMigrations = [
     Init1693835579790,
@@ -105,5 +106,6 @@ export const sqliteMigrations = [
     AddTextToSpeechToChatFlow1759419136055,
     AddChatFlowNameIndex1759424923093,
     AddApiKeyPermission1765360298674,
-    AddReasonContentToChatMessage1764759496768
+    AddReasonContentToChatMessage1764759496768,
+    AddAgentsPermission1775497538678
 ]

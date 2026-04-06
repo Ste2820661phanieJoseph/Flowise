@@ -61,7 +61,7 @@ import { gridSpacing } from '@/store/constant'
 import { useError } from '@/store/context/ErrorContext'
 
 const badges = ['POPULAR', 'NEW']
-const types = ['Chatflow', 'AgentflowV2', 'Tool']
+const types = ['Chatflow', 'AgentflowV2', 'Agent', 'Tool']
 const framework = ['Langchain', 'LlamaIndex']
 const MenuProps = {
     PaperProps: {
@@ -342,7 +342,9 @@ const Marketplace = () => {
     }
 
     const goToCanvas = (selectedChatflow) => {
-        if (selectedChatflow.type === 'AgentflowV2') {
+        if (selectedChatflow.type === 'Agent') {
+            navigate(`/marketplace/agents/${selectedChatflow.id}`, { state: { templateData: selectedChatflow } })
+        } else if (selectedChatflow.type === 'AgentflowV2') {
             navigate(`/v2/marketplace/${selectedChatflow.id}`, { state: selectedChatflow })
         } else {
             navigate(`/marketplace/${selectedChatflow.id}`, { state: selectedChatflow })
@@ -737,7 +739,8 @@ const Marketplace = () => {
                                                                 >
                                                                     {(data.type === 'Chatflow' ||
                                                                         data.type === 'Agentflow' ||
-                                                                        data.type === 'AgentflowV2') && (
+                                                                        data.type === 'AgentflowV2' ||
+                                                                        data.type === 'Agent') && (
                                                                         <ItemCard
                                                                             onClick={() => goToCanvas(data)}
                                                                             data={data}
@@ -753,7 +756,8 @@ const Marketplace = () => {
                                                             {!data.badge &&
                                                                 (data.type === 'Chatflow' ||
                                                                     data.type === 'Agentflow' ||
-                                                                    data.type === 'AgentflowV2') && (
+                                                                    data.type === 'AgentflowV2' ||
+                                                                    data.type === 'Agent') && (
                                                                     <ItemCard
                                                                         onClick={() => goToCanvas(data)}
                                                                         data={data}
@@ -801,33 +805,35 @@ const Marketplace = () => {
                         </Available>
                         <Available permission='templates:custom'>
                             <TabPanel value={activeTabValue} index={1}>
-                                <Stack direction='row' sx={{ gap: 2, my: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                                    {templateUsecases.map((usecase, index) => (
-                                        <FormControlLabel
-                                            key={index}
-                                            size='small'
-                                            control={
-                                                <Checkbox
-                                                    disabled={
-                                                        eligibleTemplateUsecases.length === 0
-                                                            ? true
-                                                            : !eligibleTemplateUsecases.includes(usecase)
-                                                    }
-                                                    color='success'
-                                                    checked={selectedTemplateUsecases.includes(usecase)}
-                                                    onChange={(event) => {
-                                                        setSelectedTemplateUsecases(
-                                                            event.target.checked
-                                                                ? [...selectedTemplateUsecases, usecase]
-                                                                : selectedTemplateUsecases.filter((item) => item !== usecase)
-                                                        )
-                                                    }}
-                                                />
-                                            }
-                                            label={usecase}
-                                        />
-                                    ))}
-                                </Stack>
+                                {templateUsecases.length > 0 && (
+                                    <Stack direction='row' sx={{ gap: 2, my: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                                        {templateUsecases.map((usecase, index) => (
+                                            <FormControlLabel
+                                                key={index}
+                                                size='small'
+                                                control={
+                                                    <Checkbox
+                                                        disabled={
+                                                            eligibleTemplateUsecases.length === 0
+                                                                ? true
+                                                                : !eligibleTemplateUsecases.includes(usecase)
+                                                        }
+                                                        color='success'
+                                                        checked={selectedTemplateUsecases.includes(usecase)}
+                                                        onChange={(event) => {
+                                                            setSelectedTemplateUsecases(
+                                                                event.target.checked
+                                                                    ? [...selectedTemplateUsecases, usecase]
+                                                                    : selectedTemplateUsecases.filter((item) => item !== usecase)
+                                                            )
+                                                        }}
+                                                    />
+                                                }
+                                                label={usecase}
+                                            />
+                                        ))}
+                                    </Stack>
+                                )}
                                 {selectedTemplateUsecases.length > 0 && (
                                     <Button
                                         sx={{ width: 'max-content', mb: 2, borderRadius: '20px' }}
@@ -870,7 +876,8 @@ const Marketplace = () => {
                                                                 >
                                                                     {(data.type === 'Chatflow' ||
                                                                         data.type === 'Agentflow' ||
-                                                                        data.type === 'AgentflowV2') && (
+                                                                        data.type === 'AgentflowV2' ||
+                                                                        data.type === 'Agent') && (
                                                                         <ItemCard
                                                                             onClick={() => goToCanvas(data)}
                                                                             data={data}
@@ -886,7 +893,8 @@ const Marketplace = () => {
                                                             {!data.badge &&
                                                                 (data.type === 'Chatflow' ||
                                                                     data.type === 'Agentflow' ||
-                                                                    data.type === 'AgentflowV2') && (
+                                                                    data.type === 'AgentflowV2' ||
+                                                                    data.type === 'Agent') && (
                                                                     <ItemCard
                                                                         onClick={() => goToCanvas(data)}
                                                                         data={data}

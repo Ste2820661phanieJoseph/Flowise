@@ -140,7 +140,7 @@ const Chatflows = () => {
                         search={true}
                         searchPlaceholder='Search Name or Category'
                         title='Chatflows'
-                        description='Build single-agent systems, chatbots and simple LLM flows'
+                        description='Build flows with prebuilt agents and chains'
                     >
                         <ToggleButtonGroup
                             sx={{ borderRadius: 2, maxHeight: 40 }}

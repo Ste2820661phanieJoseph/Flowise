@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types'
 import { forwardRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 
 // material-ui
@@ -19,6 +19,7 @@ import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord'
 const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
     const theme = useTheme()
     const dispatch = useDispatch()
+    const location = useLocation()
     const customization = useSelector((state) => state.customization)
     const matchesSM = useMediaQuery(theme.breakpoints.down('lg'))
 
@@ -77,23 +78,23 @@ const NavItem = ({ item, level, navType, onClick, onUploadFile }) => {
         }
     }
 
-    // active menu item on page load
+    // active menu item on page load and route change
     useEffect(() => {
         if (navType === 'MENU') {
-            const currentIndex = document.location.pathname
+            const currentIndex = location.pathname
                 .toString()
                 .split('/')
                 .findIndex((id) => id === item.id)
             if (currentIndex > -1) {
                 dispatch({ type: MENU_OPEN, id: item.id })
             }
-            if (!document.location.pathname.toString().split('/')[1]) {
-                itemHandler('chatflows')
+            if (!location.pathname.toString().split('/')[1]) {
+                itemHandler('agents')
             }
         }
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [navType])
+    }, [navType, location.pathname])
 
     return (
         <ListItemButton
