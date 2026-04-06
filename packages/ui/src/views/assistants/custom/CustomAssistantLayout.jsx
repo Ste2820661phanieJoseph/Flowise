@@ -30,7 +30,6 @@ import AssistantEmptySVG from '@/assets/images/assistant_empty.svg'
 import AddCustomAssistantDialog from './AddCustomAssistantDialog'
 import ErrorBoundary from '@/ErrorBoundary'
 import { StyledPermissionButton } from '@/ui-component/button/RBACButtons'
-import AgentListMenu from '@/ui-component/button/AgentListMenu'
 import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
 
 // API
@@ -262,16 +261,7 @@ const CustomAssistantLayout = () => {
                                                                         : '-'}
                                                                 </Typography>
                                                             </StyledTableCell>
-                                                            <StyledTableCell
-                                                                sx={{ textAlign: 'right' }}
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
-                                                                <AgentListMenu
-                                                                    assistant={data}
-                                                                    setError={setError}
-                                                                    updateFlowsApi={getAllAssistantsApi}
-                                                                />
-                                                            </StyledTableCell>
+                                                            <StyledTableCell sx={{ textAlign: 'right' }} />
                                                         </StyledTableRow>
                                                     )
                                                 })}

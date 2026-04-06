@@ -32,5 +32,21 @@ export class AddAgentsPermission1775497538678 implements MigrationInterface {
         )
     }
 
-    public async down(): Promise<void> {}
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        const tables = ['"role"', '"apikey"']
+        for (const table of tables) {
+            await queryRunner.query(
+                `UPDATE ${table} SET "permissions" = REPLACE("permissions", '"assistants:delete","agents:delete"', '"assistants:delete"') WHERE "permissions" LIKE '%agents:delete%';`
+            )
+            await queryRunner.query(
+                `UPDATE ${table} SET "permissions" = REPLACE("permissions", '"assistants:update","agents:update","agents:config","agents:domains"', '"assistants:update"') WHERE "permissions" LIKE '%agents:update%';`
+            )
+            await queryRunner.query(
+                `UPDATE ${table} SET "permissions" = REPLACE("permissions", '"assistants:create","agents:create","agents:duplicate","agents:export","agents:import"', '"assistants:create"') WHERE "permissions" LIKE '%agents:create%';`
+            )
+            await queryRunner.query(
+                `UPDATE ${table} SET "permissions" = REPLACE("permissions", '"assistants:view","agents:view"', '"assistants:view"') WHERE "permissions" LIKE '%agents:view%';`
+            )
+        }
+    }
 }
