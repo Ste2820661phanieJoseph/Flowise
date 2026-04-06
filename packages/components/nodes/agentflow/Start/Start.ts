@@ -44,7 +44,8 @@ class Start_Agentflow implements INode {
                     {
                         label: 'Schedule Input',
                         name: 'scheduleInput',
-                        description: 'Start the workflow on a recurring schedule (cron)'
+                        description: 'Start the workflow on a recurring schedule (cron)',
+                        client: ['agentflowv2']
                     }
                 ],
                 default: 'chatInput'

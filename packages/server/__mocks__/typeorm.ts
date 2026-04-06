@@ -8,6 +8,8 @@
 const decorator = (): (() => void) => () => {}
 
 module.exports = {
+    Column: decorator,
+    Entity: decorator,
     PrimaryGeneratedColumn: decorator,
     PrimaryColumn: decorator,
     CreateDateColumn: decorator,
