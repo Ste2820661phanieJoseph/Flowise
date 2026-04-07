@@ -56,7 +56,8 @@ const OPTIONS = {
     telemetry: {} as any,
     cachePool: {} as any,
     componentNodes: {} as any,
-    usageCacheManager: {} as any
+    usageCacheManager: {} as any,
+    identityManager: {} as any
 }
 
 function makeQueue(name = 'schedule') {

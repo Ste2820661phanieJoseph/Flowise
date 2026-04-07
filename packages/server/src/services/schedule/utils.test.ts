@@ -29,8 +29,10 @@ describe('validateCronExpression', () => {
             expect(validateCronExpression('0,30 * * * *')).toEqual({ valid: true })
         })
 
-        it('accepts 6-field cron with seconds', () => {
-            expect(validateCronExpression('0 * * * * *')).toEqual({ valid: true })
+        it('rejects 6-field cron with seconds (not supported)', () => {
+            const result = validateCronExpression('0 * * * * *')
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/5 fields/)
         })
 
         it('accepts step on a range base', () => {

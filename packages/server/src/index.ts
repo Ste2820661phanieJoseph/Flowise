@@ -144,6 +144,7 @@ export class App {
                     appDataSource: this.AppDataSource,
                     abortControllerPool: this.abortControllerPool,
                     usageCacheManager: this.usageCacheManager,
+                    identityManager: this.identityManager,
                     serverAdapter
                 })
                 logger.info('✅ [Queue]: All queues setup successfully')

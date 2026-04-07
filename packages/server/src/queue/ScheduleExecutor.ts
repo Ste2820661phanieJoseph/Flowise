@@ -12,13 +12,17 @@ import { IServerSideEventStreamer } from 'flowise-components'
 import { ScheduleRecord, ScheduleTriggerType } from '../database/entities/ScheduleRecord'
 import { ScheduleTriggerStatus } from '../database/entities/ScheduleTriggerLog'
 import { ChatFlow } from '../database/entities/ChatFlow'
+import { Workspace } from '../enterprise/database/entities/workspace.entity'
+import { Organization } from '../enterprise/database/entities/organization.entity'
 import { executeAgentFlow } from '../utils/buildAgentflow'
+import { checkPredictions, updatePredictionsUsage } from '../utils/quotaUsage'
 import scheduleService from '../services/schedule'
 import { Telemetry } from '../utils/telemetry'
 import { CachePool } from '../CachePool'
 import { UsageCacheManager } from '../UsageCacheManager'
 import { v4 as uuidv4 } from 'uuid'
 import logger from '../utils/logger'
+import { IdentityManager } from '../IdentityManager'
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +37,7 @@ export interface ScheduleExecutionContext {
     cachePool: CachePool
     usageCacheManager: UsageCacheManager
     sseStreamer: IServerSideEventStreamer
+    identityManager: IdentityManager
 }
 
 /**
@@ -137,7 +142,7 @@ export async function executeScheduleJob(
 // ─── Internal ──────────────────────────────────────────────────────────────────
 
 async function _executeAgentflow(ctx: ScheduleExecutionContext, record: ScheduleRecord, scheduledAt: Date): Promise<any> {
-    const { appDataSource, componentNodes, telemetry, cachePool, usageCacheManager, sseStreamer } = ctx
+    const { appDataSource, componentNodes, telemetry, cachePool, usageCacheManager, sseStreamer, identityManager } = ctx
     const startTime = Date.now()
 
     const log = await scheduleService.createTriggerLog({
@@ -153,7 +158,21 @@ async function _executeAgentflow(ctx: ScheduleExecutionContext, record: Schedule
     try {
         const chatflow = await appDataSource.getRepository(ChatFlow).findOneBy({ id: record.targetId })
         if (!chatflow) throw new Error(`ChatFlow ${record.targetId} not found`)
-        if (chatflow.type !== 'AGENTFLOW') throw new Error(`ChatFlow ${record.targetId} is not of type AGENTFLOW`)
+        const isAgentFlow = chatflow.type === 'AGENTFLOW'
+        if (!isAgentFlow) throw new Error(`ChatFlow ${record.targetId} is not of type AGENTFLOW`)
+
+        const workspaceId = chatflow.workspaceId ?? record.workspaceId
+
+        const workspace = await appDataSource.getRepository(Workspace).findOneBy({ id: workspaceId })
+        if (!workspace) throw new Error(`Workspace ${workspaceId} not found`)
+        const org = await appDataSource.getRepository(Organization).findOneBy({ id: workspace.organizationId })
+        if (!org) throw new Error(`Organization ${workspace.organizationId} not found`)
+
+        const orgId = org.id
+        const subscriptionId = org.subscriptionId as string
+        const productId = await identityManager.getProductIdFromSubscription(subscriptionId)
+
+        await checkPredictions(org.id, subscriptionId, usageCacheManager)
 
         const chatId = uuidv4()
         const incomingInput: IncomingAgentflowInput = {
@@ -177,10 +196,10 @@ async function _executeAgentflow(ctx: ScheduleExecutionContext, record: Schedule
             uploadedFilesContent: '',
             fileUploads: [],
             isTool: true,
-            workspaceId: chatflow.workspaceId ?? record.workspaceId,
-            orgId: '',
-            subscriptionId: '',
-            productId: ''
+            workspaceId,
+            orgId,
+            subscriptionId,
+            productId
         })
 
         const elapsedTimeMs = Date.now() - startTime
@@ -193,6 +212,7 @@ async function _executeAgentflow(ctx: ScheduleExecutionContext, record: Schedule
             executionId
         })
 
+        await updatePredictionsUsage(orgId, subscriptionId, workspaceId, usageCacheManager)
         await scheduleService.updateScheduleAfterRun(appDataSource, record.id, record.cronExpression, record.timezone ?? 'UTC')
         logger.debug(`[ScheduleExecutor]: Completed schedule ${record.id} (${elapsedTimeMs}ms)`)
         return result

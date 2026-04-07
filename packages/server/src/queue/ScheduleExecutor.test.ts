@@ -40,6 +40,11 @@ jest.mock('../Interface', () => ({}), { virtual: true })
 jest.mock('../utils/telemetry', () => ({ Telemetry: class Telemetry {} }))
 jest.mock('../CachePool', () => ({ CachePool: class CachePool {} }))
 jest.mock('../UsageCacheManager', () => ({ UsageCacheManager: class UsageCacheManager {} }))
+jest.mock('../IdentityManager', () => ({ IdentityManager: class IdentityManager {} }))
+jest.mock('../utils/quotaUsage', () => ({
+    checkPredictions: jest.fn(),
+    updatePredictionsUsage: jest.fn()
+}))
 
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
@@ -79,6 +84,8 @@ const makeChatFlow = (overrides: Record<string, unknown> = {}) => ({
 // ─── Test fixture setup ───────────────────────────────────────────────────────
 
 let mockFindOneBy: jest.Mock
+let mockWorkspaceFindOneBy: jest.Mock
+let mockOrgFindOneBy: jest.Mock
 let mockAppDataSource: { getRepository: jest.Mock }
 let mockCtx: any
 
@@ -86,8 +93,15 @@ beforeEach(() => {
     jest.clearAllMocks()
 
     mockFindOneBy = jest.fn()
+    mockWorkspaceFindOneBy = jest.fn().mockResolvedValue({ id: 'ws-1', organizationId: 'org-1' })
+    mockOrgFindOneBy = jest.fn().mockResolvedValue({ id: 'org-1', subscriptionId: 'sub-1' })
     mockAppDataSource = {
-        getRepository: jest.fn().mockReturnValue({ findOneBy: mockFindOneBy })
+        getRepository: jest.fn().mockImplementation((Entity: any) => {
+            const name = Entity?.name ?? ''
+            if (name === 'Workspace') return { findOneBy: mockWorkspaceFindOneBy }
+            if (name === 'Organization') return { findOneBy: mockOrgFindOneBy }
+            return { findOneBy: mockFindOneBy }
+        })
     }
     mockCtx = {
         appDataSource: mockAppDataSource,
@@ -95,7 +109,8 @@ beforeEach(() => {
         telemetry: {},
         cachePool: {},
         usageCacheManager: {},
-        sseStreamer: {}
+        sseStreamer: {},
+        identityManager: { getProductIdFromSubscription: jest.fn().mockResolvedValue('prod-1') }
     }
     ;(scheduleService.isDefaultInputValid as jest.Mock).mockReturnValue(true)
     ;(scheduleService.createTriggerLog as jest.Mock).mockResolvedValue({ id: 'log-1' })

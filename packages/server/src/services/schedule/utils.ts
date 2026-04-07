@@ -19,10 +19,10 @@ export const validateCronExpression = (expression: string, timezone: string = 'U
     const trimmed = expression.trim()
     const fields = trimmed.split(/\s+/)
 
-    if (fields.length !== 5 && fields.length !== 6) {
+    if (fields.length !== 5) {
         return {
             valid: false,
-            error: 'Cron expression must have 5 fields (minute hour day month weekday) or 6 fields (second minute hour day month weekday)'
+            error: 'Cron expression must have 5 fields (minute hour day month weekday)'
         }
     }
 
@@ -73,17 +73,15 @@ export const validateCronExpression = (expression: string, timezone: string = 'U
 
     // Per-position field ranges [min, max]: minute hour day-of-month month day-of-week
     const fieldRanges: Array<[number, number]> = [
-        [0, 59], // minutes (or seconds when 6-field)
+        [0, 59], // minutes
         [0, 23], // hours
         [1, 31], // day of month
         [1, 12], // month
         [0, 7] // day of week (0 and 7 both represent Sunday)
     ]
 
-    // For 6-field cron, prepend an extra seconds range (same as minutes: 0-59)
-    const ranges: Array<[number, number]> = fields.length === 6 ? [[0, 59], ...fieldRanges] : fieldRanges
     for (let i = 0; i < fields.length; i++) {
-        if (!validateCronField(fields[i], ranges[i][0], ranges[i][1])) {
+        if (!validateCronField(fields[i], fieldRanges[i][0], fieldRanges[i][1])) {
             return { valid: false, error: `Invalid cron field at position ${i + 1}: "${fields[i]}"` }
         }
     }
@@ -131,16 +129,14 @@ interface _ParsedCronFields {
 /** Parse a cron expression once so fields can be reused across many date checks. */
 function _parseCronFields(expression: string): _ParsedCronFields {
     const fields = expression.trim().split(/\s+/)
-    const offset = fields.length === 6 ? 1 : 0
     return {
-        minuteField: fields[0 + offset],
-        hourField: fields[1 + offset],
-        domField: fields[2 + offset],
-        monthField: fields[3 + offset],
-        dowField: fields[4 + offset]
+        minuteField: fields[0],
+        hourField: fields[1],
+        domField: fields[2],
+        monthField: fields[3],
+        dowField: fields[4]
     }
 }
-
 /**
  * Check whether a pre-parsed cron matches `date`, using a pre-built Intl.DateTimeFormat for TZ conversion.
  * Both `parsed` and `fmt` should be created once outside any hot loop.
