@@ -34,6 +34,7 @@ import ErrorBoundary from '@/ErrorBoundary'
 import { StyledPermissionButton } from '@/ui-component/button/RBACButtons'
 import AgentListMenu from '@/ui-component/button/AgentListMenu'
 import ConfirmDialog from '@/ui-component/dialog/ConfirmDialog'
+import TablePagination, { DEFAULT_ITEMS_PER_PAGE } from '@/ui-component/pagination/TablePagination'
 
 // API
 import chatflowsApi from '@/api/chatflows'
@@ -104,11 +105,14 @@ const Agents = () => {
     const [isLoading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [agents, setAgents] = useState([])
+    const [total, setTotal] = useState(0)
 
     const [search, setSearch] = useState('')
     const [view, setView] = useState(localStorage.getItem('agentDisplayStyle') || 'card')
     const [order, setOrder] = useState(localStorage.getItem('agent_order') || 'desc')
     const [orderBy, setOrderBy] = useState(localStorage.getItem('agent_orderBy') || 'updatedDate')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [pageLimit, setPageLimit] = useState(() => Number(localStorage.getItem('agentPageSize') || DEFAULT_ITEMS_PER_PAGE))
 
     const onSearchChange = (event) => {
         setSearch(event.target.value)
@@ -169,12 +173,20 @@ const Agents = () => {
         })
     }
 
-    const refreshAgents = () => {
-        getAllAgentsApi.request('AGENT')
+    const refreshAgents = (page, limit) => {
+        const params = { page: page || currentPage, limit: limit || pageLimit }
+        getAllAgentsApi.request('AGENT', params)
+    }
+
+    const onPageChange = (page, limit) => {
+        setCurrentPage(page)
+        setPageLimit(limit)
+        localStorage.setItem('agentPageSize', limit)
+        refreshAgents(page, limit)
     }
 
     useEffect(() => {
-        refreshAgents()
+        refreshAgents(currentPage, pageLimit)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
@@ -188,11 +200,12 @@ const Agents = () => {
 
     // Set agents from chatflows API (returns both ASSISTANT and AGENT types)
     useEffect(() => {
-        const agentList = getAllAgentsApi.data?.data || getAllAgentsApi.data || []
-        setAgents(agentList)
+        if (getAllAgentsApi.data) {
+            const agentList = getAllAgentsApi.data?.data || getAllAgentsApi.data || []
+            setAgents(agentList)
+            setTotal(getAllAgentsApi.data?.total ?? agentList.length)
+        }
     }, [getAllAgentsApi.data])
-
-    const total = agents.length
 
     return (
         <>
@@ -263,7 +276,7 @@ const Agents = () => {
                             <>
                                 {!view || view === 'card' ? (
                                     <Box display='grid' gridTemplateColumns='repeat(3, 1fr)' gap={gridSpacing}>
-                                        {agents.filter(filterAgents).map((agent, index) => (
+                                        {getSortedData(agents).map((agent, index) => (
                                             <ItemCard
                                                 data={{
                                                     name: agent.name,
@@ -404,6 +417,7 @@ const Agents = () => {
                                         </Table>
                                     </TableContainer>
                                 )}
+                                <TablePagination currentPage={currentPage} limit={pageLimit} total={total} onChange={onPageChange} />
                             </>
                         )}
                         {!isLoading && total === 0 && (
