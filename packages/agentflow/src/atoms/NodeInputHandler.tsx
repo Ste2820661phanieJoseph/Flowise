@@ -303,7 +303,7 @@ export function NodeInputHandler({
 
             case 'json': {
                 const jsonStr = typeof value === 'string' ? value : JSON.stringify(value || {})
-                if (inputParam.acceptVariable && variableItems && variableItems.length > 0) {
+                if (inputParam.acceptVariable) {
                     // acceptVariable: show a button that opens a dialog with JsonInput + variable support
                     return (
                         <Button
@@ -541,7 +541,7 @@ export function NodeInputHandler({
                 </Popover>
             )}
 
-            {inputParam?.type === 'json' && inputParam.acceptVariable && variableItems && variableItems.length > 0 && (
+            {inputParam?.type === 'json' && inputParam.acceptVariable && (
                 <Dialog open={jsonDialogOpen} onClose={() => setJsonDialogOpen(false)} fullWidth maxWidth='sm'>
                     <DialogTitle>{inputParam.label}</DialogTitle>
                     <DialogContent>
