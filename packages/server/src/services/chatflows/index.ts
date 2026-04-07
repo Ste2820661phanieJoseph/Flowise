@@ -25,7 +25,8 @@ import { updateStorageUsage } from '../../utils/quotaUsage'
 
 export const enum ChatflowErrorMessage {
     INVALID_CHATFLOW_TYPE = 'Invalid Chatflow Type',
-    INVALID_CHATFLOW_ID = 'Invalid Chatflow ID'
+    INVALID_CHATFLOW_ID = 'Invalid Chatflow ID',
+    WORKSPACE_ID_REQUIRED = 'Workspace ID is required'
 }
 
 export function validateChatflowType(type: ChatflowType | undefined) {
@@ -276,6 +277,14 @@ const getChatflowById = async (chatflowId: string, workspaceId?: string): Promis
     }
 }
 
+/** Resolves a chatflow only if it belongs to the given workspace; rejects when workspaceId is missing (prevents unscoped lookup). */
+const getChatflowByIdForWorkspace = async (chatflowId: string, workspaceId: string | undefined): Promise<any> => {
+    if (!workspaceId) {
+        throw new InternalFlowiseError(StatusCodes.BAD_REQUEST, ChatflowErrorMessage.WORKSPACE_ID_REQUIRED)
+    }
+    return getChatflowById(chatflowId, workspaceId)
+}
+
 const saveChatflow = async (
     newChatFlow: ChatFlow,
     orgId: string,
@@ -442,20 +451,17 @@ const _checkAndUpdateDocumentStoreUsage = async (chatflow: ChatFlow, workspaceId
     }
 }
 
-const checkIfChatflowHasChanged = async (chatflowId: string, lastUpdatedDateTime: string): Promise<any> => {
+const checkIfChatflowHasChanged = async (chatflowId: string, lastUpdatedDateTime: string, workspaceId: string): Promise<any> => {
     try {
-        const appServer = getRunningExpressApp()
-        //**
-        const chatflow = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({
-            id: chatflowId
-        })
+        const chatflow = await getChatflowByIdForWorkspace(chatflowId, workspaceId)
         if (!chatflow) {
             throw new InternalFlowiseError(StatusCodes.NOT_FOUND, `Chatflow ${chatflowId} not found`)
         }
-        // parse the lastUpdatedDateTime as a date and
-        //check if the updatedDate is the same as the lastUpdatedDateTime
         return { hasChanged: chatflow.updatedDate.toISOString() !== lastUpdatedDateTime }
     } catch (error) {
+        if (error instanceof InternalFlowiseError) {
+            throw error
+        }
         throw new InternalFlowiseError(
             StatusCodes.INTERNAL_SERVER_ERROR,
             `Error: chatflowsService.checkIfChatflowHasChanged - ${getErrorMessage(error)}`
@@ -471,6 +477,7 @@ export default {
     getAllChatflowsCount,
     getChatflowByApiKey,
     getChatflowById,
+    getChatflowByIdForWorkspace,
     saveChatflow,
     updateChatflow,
     getSinglePublicChatbotConfig,
