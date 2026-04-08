@@ -272,7 +272,7 @@ const checkIfChatflowHasChanged = async (req: Request, res: Response, next: Next
         if (!workspaceId) {
             throw new InternalFlowiseError(
                 StatusCodes.NOT_FOUND,
-                `Error: chatflowsController.checkIfChatflowHasChanged - workspace ${workspaceId} not found!`
+                'Error: chatflowsController.checkIfChatflowHasChanged - active workspace ID not found!'
             )
         }
         const apiResponse = await chatflowsService.checkIfChatflowHasChanged(req.params.id, req.params.lastUpdatedDateTime, workspaceId)

@@ -40,7 +40,7 @@ export class UserController {
                 user = await userService.readUserById(query.id, queryRunner)
                 if (!user) throw new InternalFlowiseError(StatusCodes.NOT_FOUND, UserErrorMessage.USER_NOT_FOUND)
             } else if (query.email) {
-                const emailLc = query.email.trim().toLowerCase()
+                const emailLc = (typeof query.email === 'string' ? query.email : '').trim().toLowerCase()
                 const selfEmail = sessionUser.email?.trim().toLowerCase()
                 if (!selfEmail || emailLc !== selfEmail) {
                     const byEmail = await userService.readUserByEmail(query.email, queryRunner)

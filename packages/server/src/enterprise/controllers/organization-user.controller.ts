@@ -76,12 +76,12 @@ export class OrganizationUserController {
                 }
                 organizationUser = await organizationUserservice.readOrganizationUserByOrganizationId(query.organizationId, queryRunner)
             } else if (query.userId) {
+                if (query.userId !== user.id && !userMayManageOrgUsers(user)) {
+                    throw new InternalFlowiseError(StatusCodes.FORBIDDEN, GeneralErrorMessage.FORBIDDEN)
+                }
                 if (query.userId === user.id) {
                     organizationUser = await organizationUserservice.readOrganizationUserByUserId(query.userId, queryRunner)
                 } else {
-                    if (!userMayManageOrgUsers(user)) {
-                        throw new InternalFlowiseError(StatusCodes.FORBIDDEN, GeneralErrorMessage.FORBIDDEN)
-                    }
                     organizationUser = await organizationUserservice.readOrganizationUserByOrganizationIdUserId(
                         user.activeOrganizationId,
                         query.userId,

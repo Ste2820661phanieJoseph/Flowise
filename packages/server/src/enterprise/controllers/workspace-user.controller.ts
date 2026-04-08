@@ -47,13 +47,16 @@ export class WorkspaceUserController {
                 await assertWorkspaceIdAccessibleToUser(user, query.workspaceId, queryRunner)
                 workspaceUser = await workspaceUserService.readWorkspaceUserByWorkspaceId(query.workspaceId, queryRunner)
             } else if (query.organizationId && query.userId) {
+                if (query.userId !== user.id && !userMayManageOrgUsers(user)) {
+                    throw new InternalFlowiseError(StatusCodes.FORBIDDEN, GeneralErrorMessage.FORBIDDEN)
+                }
                 workspaceUser = await workspaceUserService.readWorkspaceUserByOrganizationIdUserId(
                     query.organizationId,
                     query.userId,
                     queryRunner
                 )
             } else if (query.userId) {
-                if (typeof query.userId === 'string' && query.userId !== user.id && !userMayManageOrgUsers(user)) {
+                if (query.userId !== user.id && !userMayManageOrgUsers(user)) {
                     throw new InternalFlowiseError(StatusCodes.FORBIDDEN, GeneralErrorMessage.FORBIDDEN)
                 }
                 workspaceUser = await workspaceUserService.readWorkspaceUserByUserId(query.userId, queryRunner)
