@@ -7,13 +7,13 @@ import { InternalFlowiseError } from '../../errors/internalFlowiseError'
 
 const createWebhook = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        if (typeof req.params === 'undefined' || !req.params.id) {
+        if (req.params.id == null) {
             throw new InternalFlowiseError(StatusCodes.PRECONDITION_FAILED, `Error: webhookController.createWebhook - id not provided!`)
         }
 
         const workspaceId = req.user?.activeWorkspaceId
 
-        await webhookService.validateWebhookChatflow(req.params.id, workspaceId)
+        await webhookService.validateWebhookChatflow(req.params.id, workspaceId, req.body)
 
         // Wrap the raw webhook payload so buildAgentflow.ts can access it via incomingInput.webhook
         req.body = { webhook: req.body }

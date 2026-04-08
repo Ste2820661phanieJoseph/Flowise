@@ -108,4 +108,17 @@ describe('createWebhook', () => {
 
         expect(next).toHaveBeenCalledWith(error)
     })
+
+    it('passes the original body to validateWebhookChatflow before mutation', async () => {
+        mockValidateWebhookChatflow.mockResolvedValue(undefined)
+        mockBuildChatflow.mockResolvedValue({})
+
+        const req = mockReq({ body: { foo: 'bar' } })
+        const res = mockRes()
+        const next = mockNext()
+
+        await webhookController.createWebhook(req, res, next)
+
+        expect(mockValidateWebhookChatflow).toHaveBeenCalledWith('chatflow-123', undefined, { foo: 'bar' })
+    })
 })
