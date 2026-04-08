@@ -38,7 +38,7 @@ function parseToolArray(value: unknown): ToolEntry[] {
     return []
 }
 
-function NodeToolIconsComponent({ inputs, nodeColor = '#000' }: NodeToolIconsProps) {
+function NodeToolIconsComponent({ inputs, nodeColor = '#4A90D9' }: NodeToolIconsProps) {
     const { apiBaseUrl } = useApiContext()
     const { isDarkMode } = useConfigContext()
 
@@ -93,7 +93,7 @@ function NodeToolIconsComponent({ inputs, nodeColor = '#000' }: NodeToolIconsPro
                                         <Box
                                             key={`tool-${configIndex}-${toolIndex}-${propIndex}`}
                                             component='img'
-                                            src={`${apiBaseUrl}/api/v1/node-icon/${toolName}`}
+                                            src={`${apiBaseUrl}/api/v1/node-icon/${encodeURIComponent(toolName)}`}
                                             alt={toolName}
                                             sx={{
                                                 width: 20,
@@ -181,7 +181,7 @@ function NodeToolIconsComponent({ inputs, nodeColor = '#000' }: NodeToolIconsPro
                             <Box
                                 key={`tool-${configIndex}-${toolIndex}`}
                                 component='img'
-                                src={`${apiBaseUrl}/api/v1/node-icon/${toolName}`}
+                                src={`${apiBaseUrl}/api/v1/node-icon/${encodeURIComponent(toolName)}`}
                                 alt={toolName}
                                 sx={{
                                     width: 20,
