@@ -63,6 +63,65 @@ function useFlowStateKeys(excludeNodeName?: string): string[] {
     return getDefinedStateKeys(nodes as FlowNode[])
 }
 
+/** Wraps the three-step async option fetching setup into a single hook. */
+function useAsyncOptionData(
+    inputParam: AsyncInputProps['inputParam'],
+    nodeName: string | undefined,
+    inputValues: Record<string, unknown> | undefined
+) {
+    const stateKeys = useFlowStateKeys(nodeName)
+    const params = buildAsyncParams(inputParam.loadMethod, nodeName, inputValues, stateKeys)
+    return useAsyncOptions({
+        loadMethod: inputParam.loadMethod,
+        credentialNames: inputParam.credentialNames,
+        params
+    })
+}
+
+/** Error state with a retry button. Shared between single- and multi-select dropdowns. */
+function AsyncFetchError({ error, onRetry }: { error: string; onRetry: () => void }) {
+    return (
+        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant='caption' color='error' sx={{ flexGrow: 1 }}>
+                {error}
+            </Typography>
+            <IconButton size='small' onClick={onRetry} title='Retry' aria-label='retry'>
+                <IconRefresh size={16} />
+            </IconButton>
+        </Box>
+    )
+}
+
+/** Renders the image + label + description block for a single option. */
+function OptionContent({ option }: { option: NodeOption }) {
+    return (
+        <>
+            {option.imageSrc && (
+                <Box
+                    component='img'
+                    src={option.imageSrc}
+                    alt={option.label}
+                    sx={{ width: 30, height: 30, padding: '1px', borderRadius: '50%', flexShrink: 0 }}
+                />
+            )}
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <Typography variant='h5'>{option.label}</Typography>
+                {option.description && <Typography variant='caption'>{option.description}</Typography>}
+            </Box>
+        </>
+    )
+}
+
+/** Loading spinner end adornment. Shared between single- and multi-select inputs. */
+function LoadingEndAdornment({ loading, original }: { loading: boolean; original: React.ReactNode }) {
+    return (
+        <Fragment>
+            {loading ? <CircularProgress color='inherit' size={20} /> : null}
+            {original}
+        </Fragment>
+    )
+}
+
 /** Dropdown for listPreviousNodes — reads ancestor nodes from flow state, no server call. */
 function PreviousNodesDropdown({ value, disabled, onChange, nodeId }: Pick<AsyncInputProps, 'value' | 'disabled' | 'onChange' | 'nodeId'>) {
     const options = useFlowAncestorNodeOptions(nodeId)
@@ -189,13 +248,7 @@ function AsyncOptionsDropdown({
     isCredential,
     onCreateNew
 }: AsyncInputProps & { isCredential: boolean; onCreateNew: () => void }) {
-    const stateKeys = useFlowStateKeys(nodeName)
-    const params = buildAsyncParams(inputParam.loadMethod, nodeName, inputValues, stateKeys)
-    const { options, loading, error, refetch } = useAsyncOptions({
-        loadMethod: inputParam.loadMethod,
-        credentialNames: inputParam.credentialNames,
-        params
-    })
+    const { options, loading, error, refetch } = useAsyncOptionData(inputParam, nodeName, inputValues)
 
     // Append "- Create New -" sentinel for credential dropdowns
     const displayOptions = isCredential ? [...options, { label: '- Create New -', name: CREATE_NEW_SENTINEL }] : options
@@ -216,16 +269,7 @@ function AsyncOptionsDropdown({
     }, [loading, value, options, onChange])
 
     if (error) {
-        return (
-            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant='caption' color='error' sx={{ flexGrow: 1 }}>
-                    {error}
-                </Typography>
-                <IconButton size='small' onClick={refetch} title='Retry' aria-label='retry'>
-                    <IconRefresh size={16} />
-                </IconButton>
-            </Box>
-        )
+        return <AsyncFetchError error={error} onRetry={refetch} />
     }
 
     return (
@@ -260,20 +304,7 @@ function AsyncOptionsDropdown({
                             {option.label}
                         </Typography>
                     ) : (
-                        <>
-                            {option.imageSrc && (
-                                <Box
-                                    component='img'
-                                    src={option.imageSrc}
-                                    alt={option.label}
-                                    sx={{ width: 30, height: 30, padding: '1px', borderRadius: '50%', flexShrink: 0 }}
-                                />
-                            )}
-                            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                                <Typography variant='h5'>{option.label}</Typography>
-                                {option.description && <Typography variant='caption'>{option.description}</Typography>}
-                            </Box>
-                        </>
+                        <OptionContent option={option} />
                     )}
                 </Box>
             )}
@@ -295,12 +326,7 @@ function AsyncOptionsDropdown({
                                 {params.InputProps.startAdornment}
                             </>
                         ),
-                        endAdornment: (
-                            <Fragment>
-                                {loading ? <CircularProgress color='inherit' size={20} /> : null}
-                                {params.InputProps.endAdornment}
-                            </Fragment>
-                        )
+                        endAdornment: <LoadingEndAdornment loading={loading} original={params.InputProps.endAdornment} />
                     }}
                 />
             )}
@@ -333,25 +359,10 @@ function AsyncMultiOptionsInput({ inputParam, value, disabled, onChange, nodeNam
 
 /** Inner multi-select component. Remounted via key to force a fresh fetch. */
 function AsyncMultiOptionsDropdown({ inputParam, value, disabled, onChange, nodeName, inputValues }: AsyncInputProps) {
-    const stateKeys = useFlowStateKeys(nodeName)
-    const params = buildAsyncParams(inputParam.loadMethod, nodeName, inputValues, stateKeys)
-    const { options, loading, error, refetch } = useAsyncOptions({
-        loadMethod: inputParam.loadMethod,
-        credentialNames: inputParam.credentialNames,
-        params
-    })
+    const { options, loading, error, refetch } = useAsyncOptionData(inputParam, nodeName, inputValues)
 
     if (error) {
-        return (
-            <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant='caption' color='error' sx={{ flexGrow: 1 }}>
-                    {error}
-                </Typography>
-                <IconButton size='small' onClick={refetch} title='Retry' aria-label='retry'>
-                    <IconRefresh size={16} />
-                </IconButton>
-            </Box>
-        )
+        return <AsyncFetchError error={error} onRetry={refetch} />
     }
 
     // Stored as JSON-serialized array of names, e.g. '["option1","option2"]'
@@ -390,18 +401,7 @@ function AsyncMultiOptionsDropdown({ inputParam, value, disabled, onChange, node
             sx={{ flexGrow: 1 }}
             renderOption={(props, option) => (
                 <Box component='li' {...props} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {option.imageSrc && (
-                        <Box
-                            component='img'
-                            src={option.imageSrc}
-                            alt={option.label}
-                            sx={{ width: 30, height: 30, padding: '1px', borderRadius: '50%', flexShrink: 0 }}
-                        />
-                    )}
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant='h5'>{option.label}</Typography>
-                        {option.description && <Typography variant='caption'>{option.description}</Typography>}
-                    </Box>
+                    <OptionContent option={option} />
                 </Box>
             )}
             renderInput={(params) => (
@@ -409,12 +409,7 @@ function AsyncMultiOptionsDropdown({ inputParam, value, disabled, onChange, node
                     {...params}
                     InputProps={{
                         ...params.InputProps,
-                        endAdornment: (
-                            <Fragment>
-                                {loading ? <CircularProgress color='inherit' size={20} /> : null}
-                                {params.InputProps.endAdornment}
-                            </Fragment>
-                        )
+                        endAdornment: <LoadingEndAdornment loading={loading} original={params.InputProps.endAdornment} />
                     }}
                 />
             )}
