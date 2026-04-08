@@ -324,22 +324,22 @@ export function NodeInputHandler({
             case 'code':
                 return (
                     <>
+                        {inputParam.codeExample && !disabled && (
+                            <Button
+                                size='small'
+                                variant='outlined'
+                                sx={{ mb: 1, textTransform: 'none' }}
+                                onClick={() => handleDataChange(inputParam.codeExample)}
+                            >
+                                See Example
+                            </Button>
+                        )}
                         <CodeInput
                             value={typeof value === 'string' ? value : ''}
                             onChange={(code) => handleDataChange(code)}
                             language={inputParam.codeLanguage}
                             disabled={disabled}
                         />
-                        {inputParam.codeExample && !disabled && (
-                            <Button
-                                size='small'
-                                variant='text'
-                                sx={{ mt: 0.5, textTransform: 'none' }}
-                                onClick={() => handleDataChange(inputParam.codeExample)}
-                            >
-                                See Example
-                            </Button>
-                        )}
                     </>
                 )
 
