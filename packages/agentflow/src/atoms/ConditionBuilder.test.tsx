@@ -149,6 +149,25 @@ describe('ConditionBuilder', () => {
         })
     })
 
+    it('should clear value1 and value2 when operation changes', () => {
+        const data: NodeData = {
+            ...mockNodeData,
+            inputs: {
+                conditions: [{ type: 'string', value1: 'hello', operation: 'equal', value2: 'world' }]
+            }
+        } as NodeData
+
+        render(<ConditionBuilder inputParam={conditionInputParam} data={data} onDataChange={mockOnDataChange} />)
+
+        const operationInput = screen.getByTestId('input-operation')
+        fireEvent.change(operationInput, { target: { value: 'contains' } })
+
+        expect(mockOnDataChange).toHaveBeenCalledWith({
+            inputParam: conditionInputParam,
+            newValue: [{ type: 'string', value1: '', operation: 'contains', value2: '' }]
+        })
+    })
+
     it('should disable buttons when disabled prop is true', () => {
         const data: NodeData = {
             ...mockNodeData,

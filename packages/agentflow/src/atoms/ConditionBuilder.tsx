@@ -52,6 +52,10 @@ export function ConditionBuilder({
             const updatedArrayItems = [...arrayItems]
             const updatedItem = { ...updatedArrayItems[itemIndex] }
             updatedItem[changedParam.name] = newValue
+            if (changedParam.name === 'operation') {
+                updatedItem.value1 = ''
+                updatedItem.value2 = ''
+            }
             updatedArrayItems[itemIndex] = updatedItem
             onDataChange?.({ inputParam, newValue: updatedArrayItems })
         },
