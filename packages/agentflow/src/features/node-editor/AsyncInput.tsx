@@ -5,8 +5,9 @@ import Autocomplete from '@mui/material/Autocomplete'
 import { IconEdit, IconRefresh } from '@tabler/icons-react'
 
 import type { AsyncInputProps } from '@/atoms'
+import { Dropdown } from '@/atoms'
 import type { FlowNode, NodeOption } from '@/core/types'
-import { getDefinedStateKeys } from '@/core/utils'
+import { getDefinedStateKeys, getUpstreamNodes } from '@/core/utils'
 import { useAsyncOptions } from '@/infrastructure/api/hooks'
 import { useAgentflowContext } from '@/infrastructure/store'
 
@@ -37,6 +38,21 @@ function buildAsyncParams(
 }
 
 /**
+ * Returns all ancestor nodes for the given node ID as dropdown options.
+ * Used directly by AsyncOptionsDropdown when loadMethod === 'listPreviousNodes',
+ * bypassing useAsyncOptions entirely — no server call needed.
+ */
+function useFlowAncestorNodeOptions(nodeId?: string): NodeOption[] {
+    const { state } = useAgentflowContext()
+    if (!nodeId) return []
+    return getUpstreamNodes(nodeId, state.nodes as FlowNode[], state.edges, /* includeStart */ true).map((n) => ({
+        label: n.data.label,
+        name: `${n.id}-${n.data.label}`,
+        description: n.id
+    }))
+}
+
+/**
  * Extract state keys from all nodes except the given node.
  * Excludes the current node to avoid a circular reference where a node's own
  * agentUpdateState feeds keys back into its own dropdown options.
@@ -47,7 +63,22 @@ function useFlowStateKeys(excludeNodeName?: string): string[] {
     return getDefinedStateKeys(nodes as FlowNode[])
 }
 
-function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, inputValues }: AsyncInputProps) {
+/** Dropdown for listPreviousNodes — reads ancestor nodes from flow state, no server call. */
+function PreviousNodesDropdown({ value, disabled, onChange, nodeId }: Pick<AsyncInputProps, 'value' | 'disabled' | 'onChange' | 'nodeId'>) {
+    const options = useFlowAncestorNodeOptions(nodeId)
+    const stringValue = typeof value === 'string' ? value : ''
+
+    // Clear stored value if the selected node no longer exists in the flow
+    useEffect(() => {
+        if (stringValue && !options.some((o) => o.name === stringValue)) {
+            onChange('')
+        }
+    }, [stringValue, options, onChange])
+
+    return <Dropdown value={stringValue} options={options} onSelect={onChange} disabled={disabled} />
+}
+
+function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, nodeId, inputValues }: AsyncInputProps) {
     const isCredential = !!inputParam.credentialNames?.length
     const [createDialogOpen, setCreateDialogOpen] = useState(false)
     const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -83,20 +114,32 @@ function AsyncOptionsInput({ inputParam, value, disabled, onChange, nodeName, in
     return (
         <>
             <Box sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center', mt: 1 }}>
-                <AsyncOptionsDropdown
-                    key={reloadKey}
-                    inputParam={inputParam}
-                    value={pendingValue ?? value}
-                    disabled={disabled}
-                    onChange={(v) => {
-                        setPendingValue(null)
-                        onChange(v)
-                    }}
-                    nodeName={nodeName}
-                    inputValues={inputValues}
-                    isCredential={isCredential}
-                    onCreateNew={() => setCreateDialogOpen(true)}
-                />
+                {inputParam.loadMethod === 'listPreviousNodes' ? (
+                    <PreviousNodesDropdown
+                        value={pendingValue ?? value}
+                        disabled={disabled}
+                        onChange={(v) => {
+                            setPendingValue(null)
+                            onChange(v)
+                        }}
+                        nodeId={nodeId}
+                    />
+                ) : (
+                    <AsyncOptionsDropdown
+                        key={reloadKey}
+                        inputParam={inputParam}
+                        value={pendingValue ?? value}
+                        disabled={disabled}
+                        onChange={(v) => {
+                            setPendingValue(null)
+                            onChange(v)
+                        }}
+                        nodeName={nodeName}
+                        inputValues={inputValues}
+                        isCredential={isCredential}
+                        onCreateNew={() => setCreateDialogOpen(true)}
+                    />
+                )}
                 {selectedCredentialId && (
                     <IconButton title='Edit Credential' color='primary' size='small' onClick={() => setEditDialogOpen(true)}>
                         <IconEdit size={18} />

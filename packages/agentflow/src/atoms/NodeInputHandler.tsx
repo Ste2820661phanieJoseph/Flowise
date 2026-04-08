@@ -48,6 +48,7 @@ export interface AsyncInputProps {
     disabled: boolean
     onChange: (newValue: string) => void
     nodeName?: string
+    nodeId?: string
     inputValues?: Record<string, unknown>
 }
 
@@ -378,6 +379,7 @@ export function NodeInputHandler({
                             disabled={disabled}
                             onChange={(v) => handleDataChange(v)}
                             nodeName={data.name}
+                            nodeId={data.id}
                             inputValues={data.inputs as Record<string, unknown> | undefined}
                         />
                         {inputParam.loadConfig && ConfigInputComponent && value && onConfigChange && (
@@ -403,6 +405,7 @@ export function NodeInputHandler({
                         disabled={disabled}
                         onChange={(v) => handleDataChange(v)}
                         nodeName={data.name}
+                        nodeId={data.id}
                         inputValues={data.inputs as Record<string, unknown> | undefined}
                     />
                 )
