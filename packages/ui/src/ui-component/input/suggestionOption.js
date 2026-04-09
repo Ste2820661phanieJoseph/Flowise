@@ -155,8 +155,8 @@ export const suggestionOptions = (
         let webhookItems = []
         if (webhookBodyParams) {
             webhookItems = (webhookBodyParams || []).map((input) => ({
-                id: `$webhook.${input.name}`,
-                mentionLabel: `$webhook.${input.name}`,
+                id: `$webhook.body.${input.name}`,
+                mentionLabel: `$webhook.body.${input.name}`,
                 description: `Webhook Body: ${input.name}`,
                 category: 'Webhook Inputs'
             }))

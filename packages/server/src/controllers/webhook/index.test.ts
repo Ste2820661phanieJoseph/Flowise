@@ -77,7 +77,7 @@ describe('createWebhook', () => {
 
         await webhookController.createWebhook(req, res, next)
 
-        expect(mockBuildChatflow).toHaveBeenCalledWith(expect.objectContaining({ body: { webhook: originalBody } }))
+        expect(mockBuildChatflow).toHaveBeenCalledWith(expect.objectContaining({ body: { webhook: { body: originalBody } } }))
     })
 
     it('returns buildChatflow result as JSON response', async () => {

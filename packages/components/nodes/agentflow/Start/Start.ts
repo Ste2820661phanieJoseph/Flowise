@@ -44,7 +44,8 @@ class Start_Agentflow implements INode {
                     {
                         label: 'Webhook Trigger',
                         name: 'webhookTrigger',
-                        description: 'Trigger the workflow via an external webhook'
+                        description: 'Trigger the workflow via an external webhook',
+                        client: ['agentflowv2']
                     }
                 ],
                 default: 'chatInput'

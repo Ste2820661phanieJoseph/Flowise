@@ -15,8 +15,8 @@ const createWebhook = async (req: Request, res: Response, next: NextFunction) =>
 
         await webhookService.validateWebhookChatflow(req.params.id, workspaceId, req.body)
 
-        // Wrap the raw webhook payload so buildAgentflow.ts can access it via incomingInput.webhook
-        req.body = { webhook: req.body }
+        // Namespace the webhook payload so $webhook.body.*, $webhook.headers.*, $webhook.query.* can coexist
+        req.body = { webhook: { body: req.body } }
 
         const apiResponse = await predictionsServices.buildChatflow(req)
         return res.json(apiResponse)
