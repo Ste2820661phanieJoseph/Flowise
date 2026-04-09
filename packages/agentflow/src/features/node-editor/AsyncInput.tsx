@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 
 import { Box, CircularProgress, IconButton, TextField, Typography } from '@mui/material'
 import Autocomplete from '@mui/material/Autocomplete'
@@ -127,12 +127,18 @@ function PreviousNodesDropdown({ value, disabled, onChange, nodeId }: Pick<Async
     const options = useFlowAncestorNodeOptions(nodeId)
     const stringValue = typeof value === 'string' ? value : ''
 
-    // Clear stored value if the selected node no longer exists in the flow
+    const onChangeRef = useRef(onChange)
+    useEffect(() => {
+        onChangeRef.current = onChange
+    })
+
+    // Clear stored value if the selected node no longer exists in the flow.
+    // onChange is accessed via ref so an unstable parent callback can't retrigger this effect.
     useEffect(() => {
         if (stringValue && !options.some((o) => o.name === stringValue)) {
-            onChange('')
+            onChangeRef.current('')
         }
-    }, [stringValue, options, onChange])
+    }, [stringValue, options])
 
     return <Dropdown value={stringValue} options={options} onSelect={onChange} disabled={disabled} />
 }
@@ -261,12 +267,18 @@ function AsyncOptionsDropdown({
         setInputText(matchedValue?.label ?? '')
     }, [matchedValue?.label])
 
-    // Clear the stored value if it no longer matches any available option
+    const onChangeRef = useRef(onChange)
+    useEffect(() => {
+        onChangeRef.current = onChange
+    })
+
+    // Clear the stored value if it no longer matches any available option.
+    // onChange is accessed via ref so an unstable parent callback can't retrigger this effect.
     useEffect(() => {
         if (!loading && value && typeof value === 'string' && !options.some((o) => o.name === value)) {
-            onChange('')
+            onChangeRef.current('')
         }
-    }, [loading, value, options, onChange])
+    }, [loading, value, options])
 
     if (error) {
         return <AsyncFetchError error={error} onRetry={refetch} />

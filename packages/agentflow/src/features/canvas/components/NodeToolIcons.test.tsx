@@ -1,11 +1,20 @@
+import { darken } from '@mui/material/styles'
 import { render, screen } from '@testing-library/react'
+import { Mock } from 'jest-mock'
+
+import { useConfigContext } from '@/infrastructure/store'
 
 import { NodeToolIcons } from './NodeToolIcons'
 
 // --- Mocks ---
 jest.mock('@/infrastructure/store', () => ({
     useApiContext: () => ({ apiBaseUrl: 'http://localhost:3000' }),
-    useConfigContext: () => ({ isDarkMode: false })
+    useConfigContext: jest.fn(() => ({ isDarkMode: false }))
+}))
+
+jest.mock('@mui/material/styles', () => ({
+    ...jest.requireActual('@mui/material/styles'),
+    darken: jest.fn((color: string, coefficient: number) => `darken(${color},${coefficient})`)
 }))
 
 jest.mock('../nodeIcons', () => ({
@@ -250,14 +259,24 @@ describe('NodeToolIcons', () => {
     })
 
     describe('dark mode', () => {
+        afterEach(() => {
+            ;(useConfigContext as Mock).mockReturnValue({ isDarkMode: false })
+        })
+
         it('renders built-in tool icons in dark mode without crashing', () => {
-            jest.resetModules()
-            jest.mock('@/infrastructure/store', () => ({
-                useApiContext: () => ({ apiBaseUrl: 'http://localhost:3000' }),
-                useConfigContext: () => ({ isDarkMode: true })
-            }))
-            // Rendering with built-in tools should not throw in dark mode
+            ;(useConfigContext as Mock).mockReturnValue({ isDarkMode: true })
             expect(() => renderToolIcons({ agentToolsBuiltInOpenAI: ['web_search_preview'] })).not.toThrow()
+        })
+
+        it('uses a higher darken coefficient in dark mode than in light mode', () => {
+            const nodeColor = '#4A90D9'
+
+            ;(useConfigContext as Mock).mockReturnValue({ isDarkMode: true })
+            renderToolIcons({ agentToolsBuiltInOpenAI: ['web_search_preview'] }, nodeColor)
+            expect(darken).toHaveBeenCalledWith(nodeColor, 0.5)
+            ;(useConfigContext as Mock).mockReturnValue({ isDarkMode: false })
+            renderToolIcons({ agentToolsBuiltInOpenAI: ['web_search_preview'] }, nodeColor)
+            expect(darken).toHaveBeenCalledWith(nodeColor, 0.2)
         })
     })
 

@@ -11,12 +11,18 @@ interface ToolEntry {
     [key: string]: unknown
 }
 
+type BuiltInProvider = 'openai' | 'gemini' | 'anthropic'
+
 interface ToolConfig {
     tools: ToolEntry[]
     toolProperty: string | string[]
-    isBuiltInOpenAI?: boolean
-    isBuiltInGemini?: boolean
-    isBuiltInAnthropic?: boolean
+    builtInProvider?: BuiltInProvider
+}
+
+const builtInIconGetters: Record<BuiltInProvider, (_name: string) => React.ReactElement | null> = {
+    openai: getBuiltInOpenAIToolIcon,
+    gemini: getBuiltInGeminiToolIcon,
+    anthropic: getBuiltInAnthropicToolIcon
 }
 
 export interface NodeToolIconsProps {
@@ -60,17 +66,17 @@ function NodeToolIconsComponent({ inputs, nodeColor = '#4A90D9' }: NodeToolIcons
         {
             tools: parseToolArray(inputs.agentToolsBuiltInOpenAI),
             toolProperty: 'builtInTool',
-            isBuiltInOpenAI: true
+            builtInProvider: 'openai' as const
         },
         {
             tools: parseToolArray(inputs.agentToolsBuiltInGemini),
             toolProperty: 'builtInTool',
-            isBuiltInGemini: true
+            builtInProvider: 'gemini' as const
         },
         {
             tools: parseToolArray(inputs.agentToolsBuiltInAnthropic),
             toolProperty: 'builtInTool',
-            isBuiltInAnthropic: true
+            builtInProvider: 'anthropic' as const
         }
     ]
 
@@ -111,52 +117,8 @@ function NodeToolIconsComponent({ inputs, nodeColor = '#4A90D9' }: NodeToolIcons
                         const toolName = tool[config.toolProperty as string] as string
                         if (!toolName) return []
 
-                        if (config.isBuiltInOpenAI) {
-                            const icon = getBuiltInOpenAIToolIcon(toolName)
-                            if (!icon) return []
-                            return [
-                                <Box
-                                    key={`tool-${configIndex}-${toolIndex}`}
-                                    sx={{
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: '50%',
-                                        backgroundColor: builtInBg,
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        padding: 0.2
-                                    }}
-                                >
-                                    {icon}
-                                </Box>
-                            ]
-                        }
-
-                        if (config.isBuiltInGemini) {
-                            const icon = getBuiltInGeminiToolIcon(toolName)
-                            if (!icon) return []
-                            return [
-                                <Box
-                                    key={`tool-${configIndex}-${toolIndex}`}
-                                    sx={{
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: '50%',
-                                        backgroundColor: builtInBg,
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        padding: 0.2
-                                    }}
-                                >
-                                    {icon}
-                                </Box>
-                            ]
-                        }
-
-                        if (config.isBuiltInAnthropic) {
-                            const icon = getBuiltInAnthropicToolIcon(toolName)
+                        if (config.builtInProvider) {
+                            const icon = builtInIconGetters[config.builtInProvider](toolName)
                             if (!icon) return []
                             return [
                                 <Box
