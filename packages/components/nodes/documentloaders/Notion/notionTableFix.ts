@@ -11,14 +11,15 @@ export function applyCompactTableTransformer(loader: any) {
 
     n2m.setCustomTransformer('table', async (block: any) => {
         const { id, has_children } = block
+        const { has_column_header } = block.table
 
         if (!has_children) return ''
 
-        const tableRows = await getBlockChildren(notionClient, id, 100)
+        const tableRows = await getBlockChildren(notionClient, id, null)
         const tableArr = await Promise.all(
             (tableRows || []).map(async (row: any) => {
                 const { type } = row
-                const cells = row[type]['cells']
+                const cells = row[type]?.cells || []
                 return await Promise.all(
                     cells.map(async (cell: any) =>
                         (
@@ -29,6 +30,7 @@ export function applyCompactTableTransformer(loader: any) {
                         )
                             .trim()
                             .replace(/\n/g, ' ')
+                            .replace(/\|/g, '\\|')
                     )
                 )
             })
@@ -36,9 +38,12 @@ export function applyCompactTableTransformer(loader: any) {
 
         if (tableArr.length === 0) return ''
 
-        const header = '| ' + tableArr[0].join(' | ') + ' |'
-        const separator = '| ' + tableArr[0].map(() => '---').join(' | ') + ' |'
-        const rows = tableArr.slice(1).map((row) => '| ' + row.join(' | ') + ' |')
+        const headerArray = has_column_header ? tableArr[0] : new Array(tableArr[0].length).fill('')
+        const rowsArray = has_column_header ? tableArr.slice(1) : tableArr
+
+        const header = '| ' + headerArray.join(' | ') + ' |'
+        const separator = '| ' + headerArray.map(() => '---').join(' | ') + ' |'
+        const rows = rowsArray.map((row) => '| ' + row.join(' | ') + ' |')
         return [header, separator, ...rows].join('\n')
     })
 }
