@@ -18,7 +18,29 @@ export function createAgentflowTheme(isDarkMode: boolean): Theme {
         palette: {
             mode,
             primary: {
-                main: tokens.colors.nodes.agent
+                light: '#e3f2fd',
+                main: tokens.colors.nodes.agent,
+                dark: '#1e88e5'
+            },
+            secondary: {
+                light: '#ede7f6',
+                main: '#673ab7',
+                dark: '#5e35b1'
+            },
+            success: {
+                light: '#cdf5d8',
+                main: '#00e676',
+                dark: '#00c853'
+            },
+            error: {
+                light: '#f3d2d2',
+                main: '#f44336',
+                dark: '#c62828'
+            },
+            warning: {
+                light: '#fff8e1',
+                main: '#ffe57f',
+                dark: '#ffc107'
             },
             background: {
                 default: tokens.colors.background.canvas[mode],
