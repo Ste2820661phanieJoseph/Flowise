@@ -68,6 +68,18 @@ export function createAgentflowTheme(isDarkMode: boolean): Theme {
             body1: { fontSize: '0.875rem', fontWeight: 400 },
             body2: { fontSize: '0.75rem', fontWeight: 400 }
         },
+        components: {
+            MuiPaper: {
+                defaultProps: {
+                    elevation: 0
+                },
+                styleOverrides: {
+                    root: {
+                        backgroundImage: 'none'
+                    }
+                }
+            }
+        },
         spacing: 8, // MUI's default base unit
         shape: {
             borderRadius: tokens.borderRadius.md
