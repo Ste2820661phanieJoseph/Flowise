@@ -11,25 +11,28 @@ export function applyCompactTableTransformer(loader: any) {
 
     n2m.setCustomTransformer('table', async (block: any) => {
         const { id, has_children } = block
-        const tableArr: string[][] = []
 
-        if (has_children) {
-            const tableRows = await getBlockChildren(notionClient, id, 100)
-            const rowsPromise = tableRows?.map(async (row: any) => {
+        if (!has_children) return ''
+
+        const tableRows = await getBlockChildren(notionClient, id, 100)
+        const tableArr = await Promise.all(
+            (tableRows || []).map(async (row: any) => {
                 const { type } = row
                 const cells = row[type]['cells']
-                const cellStrings = await Promise.all(
+                return await Promise.all(
                     cells.map(async (cell: any) =>
-                        n2m.blockToMarkdown({
-                            type: 'paragraph',
-                            paragraph: { rich_text: cell }
-                        })
+                        (
+                            await n2m.blockToMarkdown({
+                                type: 'paragraph',
+                                paragraph: { rich_text: cell }
+                            })
+                        )
+                            .trim()
+                            .replace(/\n/g, ' ')
                     )
                 )
-                tableArr.push(cellStrings)
             })
-            await Promise.all(rowsPromise || [])
-        }
+        )
 
         if (tableArr.length === 0) return ''
 
