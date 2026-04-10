@@ -17,31 +17,11 @@ export function createAgentflowTheme(isDarkMode: boolean): Theme {
     return createTheme({
         palette: {
             mode,
-            primary: {
-                light: '#e3f2fd',
-                main: tokens.colors.nodes.agent,
-                dark: '#1e88e5'
-            },
-            secondary: {
-                light: '#ede7f6',
-                main: '#673ab7',
-                dark: '#5e35b1'
-            },
-            success: {
-                light: '#cdf5d8',
-                main: '#00e676',
-                dark: '#00c853'
-            },
-            error: {
-                light: '#f3d2d2',
-                main: '#f44336',
-                dark: '#c62828'
-            },
-            warning: {
-                light: '#fff8e1',
-                main: '#ffe57f',
-                dark: '#ffc107'
-            },
+            primary: tokens.colors.palette.primary,
+            secondary: tokens.colors.palette.secondary,
+            success: tokens.colors.palette.success,
+            error: tokens.colors.palette.error,
+            warning: tokens.colors.palette.warning,
             background: {
                 default: tokens.colors.background.canvas[mode],
                 paper: tokens.colors.background.card[mode]
