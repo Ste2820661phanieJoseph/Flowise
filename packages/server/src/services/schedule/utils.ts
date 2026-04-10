@@ -5,13 +5,19 @@
 
 // ─── Cron expression validation ──────────────────────────────────────────────
 
+const MIN_SCHEDULE_INTERVAL_SECONDS = Math.max(1, parseInt(process.env.MIN_SCHEDULE_INTERVAL_SECONDS || '60', 10) || 60)
+
 /**
  * Validates a cron expression and returns parsed info.
  * Uses a lightweight regex-based check without external dependencies.
  *
- * Supports standard 5-field cron: minute hour day month weekday
+ * Supports extended 6-field cron: second minute hour day month weekday
  */
-export const validateCronExpression = (expression: string, timezone: string = 'UTC'): { valid: boolean; error?: string } => {
+export const validateCronExpression = (
+    expression: string,
+    timezone: string = 'UTC',
+    minIntervalSeconds: number = MIN_SCHEDULE_INTERVAL_SECONDS
+): { valid: boolean; error?: string } => {
     if (!expression || typeof expression !== 'string') {
         return { valid: false, error: 'Cron expression must be a non-empty string' }
     }
@@ -19,10 +25,10 @@ export const validateCronExpression = (expression: string, timezone: string = 'U
     const trimmed = expression.trim()
     const fields = trimmed.split(/\s+/)
 
-    if (fields.length !== 5) {
+    if (fields.length !== 5 && fields.length !== 6) {
         return {
             valid: false,
-            error: 'Cron expression must have 5 fields (minute hour day month weekday)'
+            error: 'Cron expression must have 5 fields (minute hour day month weekday) or 6 fields (second minute hour day month weekday)'
         }
     }
 
@@ -73,16 +79,84 @@ export const validateCronExpression = (expression: string, timezone: string = 'U
 
     // Per-position field ranges [min, max]: minute hour day-of-month month day-of-week
     const fieldRanges: Array<[number, number]> = [
-        [0, 59], // minutes
+        [0, 59], // minutes (or seconds when 6-field)
         [0, 23], // hours
         [1, 31], // day of month
         [1, 12], // month
         [0, 7] // day of week (0 and 7 both represent Sunday)
     ]
 
+    // For 6-field cron, prepend an extra seconds range (same as minutes: 0-59)
+    const ranges: Array<[number, number]> = fields.length === 6 ? [[0, 59], ...fieldRanges] : fieldRanges
     for (let i = 0; i < fields.length; i++) {
-        if (!validateCronField(fields[i], fieldRanges[i][0], fieldRanges[i][1])) {
+        if (!validateCronField(fields[i], ranges[i][0], ranges[i][1])) {
             return { valid: false, error: `Invalid cron field at position ${i + 1}: "${fields[i]}"` }
+        }
+    }
+
+    // For 6-field cron, verify the seconds field doesn't cause firing more frequently than minIntervalSeconds
+    if (fields.length === 6 && minIntervalSeconds > 1) {
+        const secondsField = fields[0]
+        // Expand the seconds field to all matching values in [0, 59]
+        const matchingSeconds: number[] = []
+        const seen = new Set<number>()
+        for (const part of secondsField.split(',')) {
+            if (part.includes('/')) {
+                const [rangeStr, stepStr] = part.split('/')
+                const step = parseInt(stepStr, 10)
+                let start: number, end: number
+                if (rangeStr === '*') {
+                    start = 0
+                    end = 59
+                } else if (rangeStr.includes('-')) {
+                    ;[start, end] = rangeStr.split('-').map(Number)
+                } else {
+                    start = parseInt(rangeStr, 10)
+                    end = 59
+                }
+                for (let v = start; v <= end; v += step) {
+                    if (!seen.has(v)) {
+                        seen.add(v)
+                        matchingSeconds.push(v)
+                    }
+                }
+            } else if (part === '*') {
+                for (let v = 0; v <= 59; v++) {
+                    if (!seen.has(v)) {
+                        seen.add(v)
+                        matchingSeconds.push(v)
+                    }
+                }
+            } else if (part.includes('-')) {
+                const [s, e] = part.split('-').map(Number)
+                for (let v = s; v <= e; v++) {
+                    if (!seen.has(v)) {
+                        seen.add(v)
+                        matchingSeconds.push(v)
+                    }
+                }
+            } else {
+                const v = parseInt(part, 10)
+                if (!seen.has(v)) {
+                    seen.add(v)
+                    matchingSeconds.push(v)
+                }
+            }
+        }
+        matchingSeconds.sort((a, b) => a - b)
+
+        if (matchingSeconds.length > 1) {
+            // Compute the minimum gap between consecutive matching seconds (including wrap-around)
+            let minGap = 60 - matchingSeconds[matchingSeconds.length - 1] + matchingSeconds[0]
+            for (let i = 1; i < matchingSeconds.length; i++) {
+                minGap = Math.min(minGap, matchingSeconds[i] - matchingSeconds[i - 1])
+            }
+            if (minGap < minIntervalSeconds) {
+                return {
+                    valid: false,
+                    error: `Cron expression fires every ${minGap}s which is below the minimum interval of ${minIntervalSeconds}s`
+                }
+            }
         }
     }
 
@@ -129,14 +203,16 @@ interface _ParsedCronFields {
 /** Parse a cron expression once so fields can be reused across many date checks. */
 function _parseCronFields(expression: string): _ParsedCronFields {
     const fields = expression.trim().split(/\s+/)
+    const offset = fields.length === 6 ? 1 : 0
     return {
-        minuteField: fields[0],
-        hourField: fields[1],
-        domField: fields[2],
-        monthField: fields[3],
-        dowField: fields[4]
+        minuteField: fields[0 + offset],
+        hourField: fields[1 + offset],
+        domField: fields[2 + offset],
+        monthField: fields[3 + offset],
+        dowField: fields[4 + offset]
     }
 }
+
 /**
  * Check whether a pre-parsed cron matches `date`, using a pre-built Intl.DateTimeFormat for TZ conversion.
  * Both `parsed` and `fmt` should be created once outside any hot loop.
@@ -172,19 +248,21 @@ function _cronMatchesParsed(parsed: _ParsedCronFields, date: Date, fmt: Intl.Dat
 
 /**
  * Computes the next Date after `after` (defaults to now) when the cron expression will fire.
- * Searches minute-by-minute, up to 1 year ahead. Returns null if no match is found.
+ *
+ * For 5-field cron expressions, searches minute-by-minute up to 1 year ahead.
+ *
+ * For 6-field cron expressions (with seconds), finds the next matching minute first,
+ * then resolves the exact second within that minute. This supports sub-minute schedules
+ * such as every 15 or 30 seconds (default minimum safe threshold: 60 seconds).
  *
  * The Intl.DateTimeFormat instance and parsed cron fields are created once before the loop
  * to avoid repeated allocations on every iteration.
- *
- * For 6-field cron expressions with seconds, the search still only considers minute-level matches and ignores the seconds field (i.e. treats it as if it were "0").
- * This is because the scheduler only triggers at minute-level granularity, so the seconds field is not relevant for computing the next run time.
  */
 export const computeNextRunAt = (cronExpression: string, timezone: string = 'UTC', after?: Date): Date | null => {
+    const fields = cronExpression.trim().split(/\s+/)
+    const hasSeconds = fields.length === 6
+
     const start = new Date(after ? after.getTime() : Date.now())
-    // Snap to start of next minute so we never return the current minute
-    start.setSeconds(0, 0)
-    start.setMinutes(start.getMinutes() + 1)
 
     // Hoist allocations outside the loop
     const parsed = _parseCronFields(cronExpression)
@@ -199,11 +277,46 @@ export const computeNextRunAt = (cronExpression: string, timezone: string = 'UTC
         hour12: false
     })
 
-    const maxIterations = 60 * 24 * 366 // up to ~1 year of minutes
-    for (let i = 0; i < maxIterations; i++) {
-        const candidate = new Date(start.getTime() + i * 60_000)
-        if (_cronMatchesParsed(parsed, candidate, fmt)) {
-            return candidate
+    if (!hasSeconds) {
+        // ── 5-field cron: minute-level search ──────────────────────────────
+        start.setSeconds(0, 0)
+        start.setMinutes(start.getMinutes() + 1)
+
+        const maxIterations = 60 * 24 * 366 // up to ~1 year of minutes
+        for (let i = 0; i < maxIterations; i++) {
+            const candidate = new Date(start.getTime() + i * 60_000)
+            if (_cronMatchesParsed(parsed, candidate, fmt)) {
+                return candidate
+            }
+        }
+        return null
+    }
+
+    // ── 6-field cron: second-level search ──────────────────────────────────
+    const secondField = fields[0]
+
+    // Snap to the start of the next second
+    start.setMilliseconds(0)
+    start.setSeconds(start.getSeconds() + 1)
+
+    // Determine the first minute boundary and the second offset within it
+    const firstMinuteMs = start.getTime() - (start.getTime() % 60_000)
+    const firstSecondOffset = Math.round((start.getTime() - firstMinuteMs) / 1000)
+
+    const maxMinuteIterations = 60 * 24 * 366 // up to ~1 year of minutes
+    for (let i = 0; i < maxMinuteIterations; i++) {
+        const minuteMs = firstMinuteMs + i * 60_000
+        const minuteDate = new Date(minuteMs)
+
+        if (!_cronMatchesParsed(parsed, minuteDate, fmt)) continue
+
+        // This minute matches — find the first matching second
+        // For the first iteration, skip seconds before our start time
+        const secStart = i === 0 ? firstSecondOffset : 0
+        for (let s = secStart; s <= 59; s++) {
+            if (_matchCronField(secondField, s, 0)) {
+                return new Date(minuteMs + s * 1000)
+            }
         }
     }
     return null

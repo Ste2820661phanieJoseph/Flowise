@@ -29,10 +29,9 @@ describe('validateCronExpression', () => {
             expect(validateCronExpression('0,30 * * * *')).toEqual({ valid: true })
         })
 
-        it('rejects 6-field cron with seconds (not supported)', () => {
+        it('accepts 6-field cron with seconds', () => {
             const result = validateCronExpression('0 * * * * *')
-            expect(result.valid).toBe(false)
-            expect(result.error).toMatch(/5 fields/)
+            expect(result.valid).toBe(true)
         })
 
         it('accepts step on a range base', () => {
@@ -118,6 +117,56 @@ describe('validateCronExpression', () => {
             expect(result.error).toMatch(/Invalid timezone/)
         })
     })
+
+    describe('minIntervalSeconds (60) — 6-field cron seconds validation', () => {
+        it('rejects 6-field cron firing every second (*/1) with default minInterval', () => {
+            const result = validateCronExpression('* * * * * *')
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/below the minimum interval/)
+        })
+
+        it('accepts 6-field cron with seconds step >= default minInterval 10', () => {
+            const result = validateCronExpression('*/15 * * * * *', 'UTC', 10)
+            expect(result.valid).toBe(true)
+        })
+
+        it('rejects 6-field cron with seconds step < minIntervalSeconds', () => {
+            // */10 fires every 10s, minInterval = 30
+            const result = validateCronExpression('*/10 * * * * *', 'UTC', 30)
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/fires every 10s/)
+        })
+
+        it('accepts 6-field cron with seconds step >= minIntervalSeconds', () => {
+            // */30 fires every 30s, minInterval = 30
+            const result = validateCronExpression('*/30 * * * * *', 'UTC', 30)
+            expect(result.valid).toBe(true)
+        })
+
+        it('rejects comma-list seconds with small gap', () => {
+            // 0,5 → gap = 5s, wrap-around gap = 55s → min = 5s
+            const result = validateCronExpression('0,5 * * * * *', 'UTC', 10)
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/fires every 5s/)
+        })
+
+        it('accepts single-second 6-field cron (fires once per minute)', () => {
+            const result = validateCronExpression('0 * * * * *', 'UTC', 60)
+            expect(result.valid).toBe(true)
+        })
+
+        it('accounts for wrap-around gap in seconds', () => {
+            // 0,50 → gaps: 50s and wrap-around 10s → min = 10s
+            const result = validateCronExpression('0,50 * * * * *', 'UTC', 15)
+            expect(result.valid).toBe(false)
+            expect(result.error).toMatch(/fires every 10s/)
+        })
+
+        it('accepts when minIntervalSeconds is 1 (no restriction)', () => {
+            const result = validateCronExpression('* * * * * *', 'UTC', 1)
+            expect(result.valid).toBe(true)
+        })
+    })
 })
 
 // ─── computeNextRunAt ─────────────────────────────────────────────────────────
@@ -186,6 +235,73 @@ describe('computeNextRunAt', () => {
         expect(next!.getUTCHours()).toBe(12)
         expect(next!.getUTCMinutes()).toBe(15)
         expect(next!.getUTCSeconds()).toBe(0)
+    })
+
+    // ── 6-field cron (seconds) ─────────────────────────────────────────
+
+    it('supports 6-field cron: */15 fires at next 15-second boundary', () => {
+        const ref = new Date('2025-01-01T12:00:10Z')
+        const next = computeNextRunAt('*/15 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.toISOString()).toBe('2025-01-01T12:00:15.000Z')
+    })
+
+    it('supports 6-field cron: */30 fires at next 30-second boundary', () => {
+        const ref = new Date('2025-01-01T12:00:05Z')
+        const next = computeNextRunAt('*/30 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.toISOString()).toBe('2025-01-01T12:00:30.000Z')
+    })
+
+    it('supports 6-field cron: rolls to next minute when no matching second remains', () => {
+        // */30 matches 0 and 30 — ref at :45 should roll into next minute at :00
+        const ref = new Date('2025-01-01T12:00:45Z')
+        const next = computeNextRunAt('*/30 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.toISOString()).toBe('2025-01-01T12:01:00.000Z')
+    })
+
+    it('supports 6-field cron: specific second value', () => {
+        // Fire at second 20 of every minute
+        const ref = new Date('2025-01-01T12:00:10Z')
+        const next = computeNextRunAt('20 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCSeconds()).toBe(20)
+        expect(next!.getUTCMinutes()).toBe(0)
+    })
+
+    it('supports 6-field cron: specific second + specific minute', () => {
+        // Fire at second 30, minute 15 of every hour
+        const ref = new Date('2025-01-01T12:00:00Z')
+        const next = computeNextRunAt('30 15 * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCHours()).toBe(12)
+        expect(next!.getUTCMinutes()).toBe(15)
+        expect(next!.getUTCSeconds()).toBe(30)
+    })
+
+    it('supports 6-field cron: comma-separated seconds', () => {
+        // Fire at seconds 0 and 30
+        const ref = new Date('2025-01-01T12:00:10Z')
+        const next = computeNextRunAt('0,30 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCSeconds()).toBe(30)
+    })
+
+    it('supports 6-field cron: seconds with timezone', () => {
+        // Fire at second 0, minute 0, hour 9 in New York time
+        const ref = new Date('2025-06-15T12:59:50Z') // 08:59:50 NY
+        const next = computeNextRunAt('0 0 9 * * *', 'America/New_York', ref)
+        expect(next).not.toBeNull()
+        // 09:00:00 NY = 13:00:00 UTC (EDT = UTC-4)
+        expect(next!.toISOString()).toBe('2025-06-15T13:00:00.000Z')
+    })
+
+    it('returns milliseconds-zeroed output for 6-field cron', () => {
+        const ref = new Date('2025-01-01T00:00:00.500Z')
+        const next = computeNextRunAt('*/15 * * * * *', 'UTC', ref)
+        expect(next).not.toBeNull()
+        expect(next!.getUTCMilliseconds()).toBe(0)
     })
 })
 

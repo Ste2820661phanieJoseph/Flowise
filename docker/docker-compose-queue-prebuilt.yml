@@ -155,6 +155,9 @@ services:
             - HTTP_SECURITY_CHECK=${HTTP_SECURITY_CHECK}
             - PATH_TRAVERSAL_SAFETY=${PATH_TRAVERSAL_SAFETY}
             - TRUST_PROXY=${TRUST_PROXY}
+
+            # SCHEDULE
+            - MIN_SCHEDULE_INTERVAL_SECONDS=${MIN_SCHEDULE_INTERVAL_SECONDS}
         healthcheck:
             test: ['CMD', 'curl', '-f', 'http://localhost:${PORT:-3000}/api/v1/ping']
             interval: 10s
