@@ -1,6 +1,6 @@
-import { Request, Response, NextFunction } from 'express'
+import { NextFunction, Request, Response } from 'express'
 import sanitizeHtml from 'sanitize-html'
-import { extractChatflowId, validateChatflowDomain, isPublicChatflowRequest, isTTSGenerateRequest } from './domainValidation'
+import { extractChatflowId, isPublicChatflowRequest, isTTSGenerateRequest, validateChatflowDomain } from './domainValidation'
 
 export function sanitizeMiddleware(req: Request, res: Response, next: NextFunction): void {
     // decoding is necessary as the url is encoded by the browser
@@ -90,5 +90,5 @@ export function getCorsOptions(): any {
 export function getAllowedIframeOrigins(): string {
     // Expects FQDN separated by commas, otherwise nothing or * for all.
     // Also CSP allowed values: self or none
-    return process.env.IFRAME_ORIGINS ?? '*'
+    return process.env.IFRAME_ORIGINS ?? "'self'"
 }
