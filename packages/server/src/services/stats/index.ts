@@ -45,34 +45,15 @@ const getChatflowStats = async (
         else if (startDate) baseWhere.createdDate = MoreThanOrEqual(new Date(startDate))
         else if (endDate) baseWhere.createdDate = LessThanOrEqual(new Date(endDate))
 
-        // (sessions that contain at least one message with that feedback rating)
-        if (feedbackTypes && feedbackTypes.length > 0) {
-            const rows = await repo
-                .createQueryBuilder('cm2')
-                .select('DISTINCT(cm2.sessionId)', 'sessionId')
-                .innerJoin(ChatMessageFeedback, 'f2', 'f2.messageId = cm2.id')
-                .where('cm2.chatflowid = :chatflowid', { chatflowid })
-                .andWhere('f2.rating IN (:...feedbackTypes)', { feedbackTypes })
-                .getRawMany()
-
-            const qualifyingSessionIds = rows.map((r) => r.sessionId)
-
-            // No matching sessions - return zeros immediately
-            if (qualifyingSessionIds.length === 0) {
-                return { totalMessages: 0, totalSessions: 0, totalFeedback: 0, positiveFeedback: 0 }
-            }
-
-            baseWhere.sessionId = In(qualifyingSessionIds)
-        }
-
+        // TypeORM 0.3.x QueryBuilder accepts FindOptionsWhere objects (including FindOperators
+        // like In/Between) in .where() — the same WHERE clause machinery used by repo.find().
+        const totalMessagesQb = repo.createQueryBuilder('cm').select('COUNT(*)', 'count').where(baseWhere)
         const totalSessionsQb = repo.createQueryBuilder('cm').select('COUNT(DISTINCT(cm.sessionId))', 'count').where(baseWhere)
-
         const totalFeedbackQb = repo
             .createQueryBuilder('cm')
             .select('COUNT(*)', 'count')
             .innerJoin(ChatMessageFeedback, 'f', 'f.messageId = cm.id')
             .where(baseWhere)
-
         const positiveFeedbackQb = repo
             .createQueryBuilder('cm')
             .select('COUNT(*)', 'count')
@@ -80,15 +61,34 @@ const getChatflowStats = async (
             .where(baseWhere)
             .andWhere('f.rating = :rating', { rating: ChatMessageRatingType.THUMBS_UP })
 
-        const [totalMessages, totalSessionsRaw, totalFeedbackRaw, positiveFeedbackRaw] = await Promise.all([
-            repo.count({ where: baseWhere }),
+        if (feedbackTypes && feedbackTypes.length > 0) {
+            const sessionSubQb = repo
+                .createQueryBuilder()
+                .subQuery()
+                .select('DISTINCT cm2.sessionId')
+                .from(ChatMessage, 'cm2')
+                .innerJoin(ChatMessageFeedback, 'f2', 'f2.messageId = cm2.id')
+                .where(baseWhere)
+                .andWhere('f2.rating IN (:...feedbackTypes)', { feedbackTypes })
+
+            const subSql = sessionSubQb.getQuery()
+            const subParams = sessionSubQb.getParameters()
+
+            for (const qb of [totalMessagesQb, totalSessionsQb, totalFeedbackQb, positiveFeedbackQb]) {
+                qb.andWhere(`cm.sessionId IN ${subSql}`)
+                qb.setParameters(subParams)
+            }
+        }
+
+        const [totalMessagesRaw, totalSessionsRaw, totalFeedbackRaw, positiveFeedbackRaw] = await Promise.all([
+            totalMessagesQb.getRawOne(),
             totalSessionsQb.getRawOne(),
             totalFeedbackQb.getRawOne(),
             positiveFeedbackQb.getRawOne()
         ])
 
         return {
-            totalMessages,
+            totalMessages: parseInt(totalMessagesRaw?.count ?? '0', 10),
             totalSessions: parseInt(totalSessionsRaw?.count ?? '0', 10),
             totalFeedback: parseInt(totalFeedbackRaw?.count ?? '0', 10),
             positiveFeedback: parseInt(positiveFeedbackRaw?.count ?? '0', 10)

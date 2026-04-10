@@ -13,16 +13,20 @@ import { ChatFlow } from '../../database/entities/ChatFlow'
 
 const mockQb: any = {
     select: jest.fn().mockReturnThis(),
+    from: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
+    setParameters: jest.fn().mockReturnThis(),
+    subQuery: jest.fn().mockReturnThis(),
+    getQuery: jest.fn().mockReturnValue('(SELECT DISTINCT cm2.sessionId FROM chat_message cm2)'),
+    getParameters: jest.fn().mockReturnValue({}),
     getRawOne: jest.fn(),
     getRawMany: jest.fn()
 }
 
 const mockMessageRepo: any = {
-    createQueryBuilder: jest.fn().mockReturnValue(mockQb),
-    count: jest.fn()
+    createQueryBuilder: jest.fn().mockReturnValue(mockQb)
 }
 
 const mockChatFlowRepo: any = {
@@ -45,13 +49,17 @@ describe('statsService.getChatflowStats', () => {
         })
 
         mockChatFlowRepo.findOneBy.mockResolvedValue({ id: CHATFLOW_ID } as any)
-        mockMessageRepo.count.mockResolvedValue(0)
         mockQb.getRawOne.mockResolvedValue({ count: '0' })
         mockQb.getRawMany.mockResolvedValue([])
         mockQb.select.mockReturnThis()
+        mockQb.from.mockReturnThis()
         mockQb.innerJoin.mockReturnThis()
         mockQb.where.mockReturnThis()
         mockQb.andWhere.mockReturnThis()
+        mockQb.setParameters.mockReturnThis()
+        mockQb.subQuery.mockReturnThis()
+        mockQb.getQuery.mockReturnValue('(SELECT DISTINCT cm2.sessionId FROM chat_message cm2)')
+        mockQb.getParameters.mockReturnValue({})
         mockMessageRepo.createQueryBuilder.mockReturnValue(mockQb)
     })
 
@@ -71,7 +79,7 @@ describe('statsService.getChatflowStats', () => {
                 statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, undefined)
             ).rejects.toBeInstanceOf(InternalFlowiseError)
 
-            expect(mockMessageRepo.count).not.toHaveBeenCalled()
+            expect(mockMessageRepo.createQueryBuilder).not.toHaveBeenCalled()
         })
 
         it('looks up chatflow with the correct workspaceId', async () => {
@@ -86,8 +94,8 @@ describe('statsService.getChatflowStats', () => {
 
     describe('no filters', () => {
         it('returns the correct shape with parsed integers', async () => {
-            mockMessageRepo.count.mockResolvedValue(157)
             mockQb.getRawOne
+                .mockResolvedValueOnce({ count: '157' })
                 .mockResolvedValueOnce({ count: '42' })
                 .mockResolvedValueOnce({ count: '10' })
                 .mockResolvedValueOnce({ count: '7' })
@@ -107,17 +115,17 @@ describe('statsService.getChatflowStats', () => {
 
             const result = await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, undefined)
 
+            expect(result.totalMessages).toBe(0)
             expect(result.totalSessions).toBe(0)
             expect(result.totalFeedback).toBe(0)
             expect(result.positiveFeedback).toBe(0)
         })
 
-        it('runs 3 QueryBuilders and 1 count when no feedbackTypes filter is set', async () => {
+        it('runs 4 QueryBuilders and getRawOne 4 times when no feedbackTypes filter is set', async () => {
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, undefined)
 
-            expect(mockMessageRepo.createQueryBuilder).toHaveBeenCalledTimes(3)
-            expect(mockQb.getRawOne).toHaveBeenCalledTimes(3)
-            expect(mockMessageRepo.count).toHaveBeenCalledTimes(1)
+            expect(mockMessageRepo.createQueryBuilder).toHaveBeenCalledTimes(4)
+            expect(mockQb.getRawOne).toHaveBeenCalledTimes(4)
         })
     })
 
@@ -127,9 +135,9 @@ describe('statsService.getChatflowStats', () => {
 
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, chatTypes, undefined, undefined, undefined)
 
-            const countWhere = mockMessageRepo.count.mock.calls[0][0].where
-            expect(countWhere.chatType.type).toBe('in')
-            expect(countWhere.chatType.value).toEqual(chatTypes)
+            const whereArg = mockQb.where.mock.calls[0][0]
+            expect(whereArg.chatType.type).toBe('in')
+            expect(whereArg.chatType.value).toEqual(chatTypes)
         })
     })
 
@@ -137,56 +145,50 @@ describe('statsService.getChatflowStats', () => {
         it('uses Between when both startDate and endDate are provided', async () => {
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, '2024-01-01', '2024-12-31', undefined)
 
-            const countWhere = mockMessageRepo.count.mock.calls[0][0].where
-            expect(countWhere.createdDate.type).toBe('between')
+            const whereArg = mockQb.where.mock.calls[0][0]
+            expect(whereArg.createdDate.type).toBe('between')
         })
 
         it('uses MoreThanOrEqual when only startDate is provided', async () => {
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, '2024-01-01', undefined, undefined)
 
-            const countWhere = mockMessageRepo.count.mock.calls[0][0].where
-            expect(countWhere.createdDate.type).toBe('moreThanOrEqual')
+            const whereArg = mockQb.where.mock.calls[0][0]
+            expect(whereArg.createdDate.type).toBe('moreThanOrEqual')
         })
 
         it('uses LessThanOrEqual when only endDate is provided', async () => {
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, '2024-12-31', undefined)
 
-            const countWhere = mockMessageRepo.count.mock.calls[0][0].where
-            expect(countWhere.createdDate.type).toBe('lessThanOrEqual')
+            const whereArg = mockQb.where.mock.calls[0][0]
+            expect(whereArg.createdDate.type).toBe('lessThanOrEqual')
         })
     })
 
     describe('feedbackTypes filter', () => {
-        it('returns zeros immediately when no sessions match', async () => {
-            mockQb.getRawMany.mockResolvedValue([])
+        it('returns all zeros when no sessions have qualifying feedback', async () => {
+            mockQb.getRawOne.mockResolvedValue({ count: '0' })
 
             const result = await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, [
                 ChatMessageRatingType.THUMBS_UP
             ])
 
             expect(result).toEqual({ totalMessages: 0, totalSessions: 0, totalFeedback: 0, positiveFeedback: 0 })
-            expect(mockMessageRepo.count).not.toHaveBeenCalled()
-            expect(mockQb.getRawOne).not.toHaveBeenCalled()
+            expect(mockQb.getRawOne).toHaveBeenCalledTimes(4)
         })
 
-        it('runs all 4 main queries when sessions match', async () => {
-            mockQb.getRawMany.mockResolvedValue([{ sessionId: 's1' }, { sessionId: 's2' }])
-            mockMessageRepo.count.mockResolvedValue(50)
+        it('runs all 4 count queries when feedbackTypes is set', async () => {
             mockQb.getRawOne.mockResolvedValue({ count: '5' })
 
             const result = await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, [
                 ChatMessageRatingType.THUMBS_UP
             ])
 
-            expect(result.totalMessages).toBe(50)
+            expect(result.totalMessages).toBe(5)
             expect(result.totalSessions).toBe(5)
-            expect(mockMessageRepo.count).toHaveBeenCalledTimes(1)
-            expect(mockQb.getRawOne).toHaveBeenCalledTimes(3)
+            expect(mockQb.getRawOne).toHaveBeenCalledTimes(4)
         })
 
-        it('passes the feedbackTypes to the sessionId subquery', async () => {
-            mockQb.getRawMany.mockResolvedValue([{ sessionId: 's1' }])
-
+        it('passes the feedbackTypes to the session subquery', async () => {
             await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, [
                 ChatMessageRatingType.THUMBS_DOWN
             ])
@@ -195,11 +197,20 @@ describe('statsService.getChatflowStats', () => {
             expect(feedbackCall).toBeDefined()
             expect(feedbackCall![1]).toEqual(expect.objectContaining({ feedbackTypes: [ChatMessageRatingType.THUMBS_DOWN] }))
         })
+
+        it('appends the session subquery condition to all 4 count queries', async () => {
+            await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, [
+                ChatMessageRatingType.THUMBS_UP
+            ])
+
+            const sessionIdCalls = mockQb.andWhere.mock.calls.filter((call: string[]) => call[0].includes('cm.sessionId IN'))
+            expect(sessionIdCalls.length).toBe(4)
+        })
     })
 
     describe('error handling', () => {
         it('wraps unexpected errors as InternalFlowiseError with 500 status', async () => {
-            mockMessageRepo.count.mockRejectedValue(new Error('DB connection lost'))
+            mockQb.getRawOne.mockRejectedValue(new Error('DB connection lost'))
 
             let caught: any
             try {
