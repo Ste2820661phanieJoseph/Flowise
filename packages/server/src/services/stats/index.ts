@@ -24,7 +24,6 @@ const getChatflowStats = async (
                 `Error: statsService.getChatflowStats - activeWorkspaceId not provided!`
             )
         }
-
         const appServer = getRunningExpressApp()
 
         const chatflow = await appServer.AppDataSource.getRepository(ChatFlow).findOneBy({
@@ -39,6 +38,7 @@ const getChatflowStats = async (
 
         const repo = appServer.AppDataSource.getRepository(ChatMessage)
 
+        // Build up queries that will be used for all stats
         const baseWhere: FindOptionsWhere<ChatMessage> = { chatflowid }
         if (chatTypes && chatTypes.length > 0) baseWhere.chatType = In(chatTypes)
         if (startDate && endDate) baseWhere.createdDate = Between(new Date(startDate), new Date(endDate))
@@ -51,15 +51,20 @@ const getChatflowStats = async (
         const totalSessionsQb = repo.createQueryBuilder('cm').select('COUNT(DISTINCT(cm.sessionId))', 'count').where(baseWhere)
         const totalFeedbackQb = repo
             .createQueryBuilder('cm')
-            .select('COUNT(*)', 'count')
+            .select('COUNT(DISTINCT cm.id)', 'count')
             .innerJoin(ChatMessageFeedback, 'f', 'f.messageId = cm.id')
             .where(baseWhere)
         const positiveFeedbackQb = repo
             .createQueryBuilder('cm')
-            .select('COUNT(*)', 'count')
+            .select('COUNT(DISTINCT cm.id)', 'count')
             .innerJoin(ChatMessageFeedback, 'f', 'f.messageId = cm.id')
             .where(baseWhere)
             .andWhere('f.rating = :rating', { rating: ChatMessageRatingType.THUMBS_UP })
+
+        // When feedback filter is active, narrow all queries to sessions that contain
+        // matching feedback, restrict feedback counts to selected types, and build a
+        // precedingCount query (totalMessages = feedback msgs + their preceding user msgs).
+        let precedingCountQb: ReturnType<typeof repo.createQueryBuilder> | null = null
 
         if (feedbackTypes && feedbackTypes.length > 0) {
             const sessionSubQb = repo
@@ -78,17 +83,49 @@ const getChatflowStats = async (
                 qb.andWhere(`cm.sessionId IN ${subSql}`)
                 qb.setParameters(subParams)
             }
+
+            totalFeedbackQb.andWhere('f.rating IN (:...ratingFilter)', { ratingFilter: feedbackTypes })
+            positiveFeedbackQb.andWhere('f.rating IN (:...posRatingFilter)', { posRatingFilter: feedbackTypes })
+
+            // Anti-join: count immediate predecessors of feedback messages that aren't
+            // themselves feedback messages (to avoid double-counting).
+            precedingCountQb = repo
+                .createQueryBuilder('prev')
+                .select('COUNT(DISTINCT prev.id)', 'count')
+                .innerJoin(
+                    ChatMessage,
+                    'fb_msg',
+                    'fb_msg.chatflowid = prev.chatflowid AND fb_msg.sessionId = prev.sessionId AND fb_msg.createdDate > prev.createdDate'
+                )
+                .innerJoin(ChatMessageFeedback, 'fb', 'fb.messageId = fb_msg.id')
+                .leftJoin(
+                    ChatMessage,
+                    'btwn',
+                    'btwn.chatflowid = prev.chatflowid AND btwn.sessionId = prev.sessionId AND btwn.createdDate > prev.createdDate AND btwn.createdDate < fb_msg.createdDate'
+                )
+                .leftJoin(ChatMessageFeedback, 'prev_fb', 'prev_fb.messageId = prev.id AND prev_fb.rating IN (:...ft2)', {
+                    ft2: feedbackTypes
+                })
+                .where(baseWhere)
+                .andWhere('fb.rating IN (:...ft)', { ft: feedbackTypes })
+                .andWhere('btwn.id IS NULL')
+                .andWhere('prev_fb.id IS NULL')
         }
 
-        const [totalMessagesRaw, totalSessionsRaw, totalFeedbackRaw, positiveFeedbackRaw] = await Promise.all([
+        const [totalMessagesRaw, totalSessionsRaw, totalFeedbackRaw, positiveFeedbackRaw, precedingRaw] = await Promise.all([
             totalMessagesQb.getRawOne(),
             totalSessionsQb.getRawOne(),
             totalFeedbackQb.getRawOne(),
-            positiveFeedbackQb.getRawOne()
+            positiveFeedbackQb.getRawOne(),
+            precedingCountQb?.getRawOne() ?? Promise.resolve(null)
         ])
 
+        const totalMessages = precedingRaw
+            ? parseInt(totalFeedbackRaw?.count ?? '0', 10) + parseInt(precedingRaw.count ?? '0', 10)
+            : parseInt(totalMessagesRaw?.count ?? '0', 10)
+
         return {
-            totalMessages: parseInt(totalMessagesRaw?.count ?? '0', 10),
+            totalMessages,
             totalSessions: parseInt(totalSessionsRaw?.count ?? '0', 10),
             totalFeedback: parseInt(totalFeedbackRaw?.count ?? '0', 10),
             positiveFeedback: parseInt(positiveFeedbackRaw?.count ?? '0', 10)

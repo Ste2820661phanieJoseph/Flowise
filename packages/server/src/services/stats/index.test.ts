@@ -15,6 +15,7 @@ const mockQb: any = {
     select: jest.fn().mockReturnThis(),
     from: jest.fn().mockReturnThis(),
     innerJoin: jest.fn().mockReturnThis(),
+    leftJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     setParameters: jest.fn().mockReturnThis(),
@@ -54,6 +55,7 @@ describe('statsService.getChatflowStats', () => {
         mockQb.select.mockReturnThis()
         mockQb.from.mockReturnThis()
         mockQb.innerJoin.mockReturnThis()
+        mockQb.leftJoin.mockReturnThis()
         mockQb.where.mockReturnThis()
         mockQb.andWhere.mockReturnThis()
         mockQb.setParameters.mockReturnThis()
@@ -173,19 +175,29 @@ describe('statsService.getChatflowStats', () => {
             ])
 
             expect(result).toEqual({ totalMessages: 0, totalSessions: 0, totalFeedback: 0, positiveFeedback: 0 })
-            expect(mockQb.getRawOne).toHaveBeenCalledTimes(4)
+            // 4 main queries + 1 precedingCountQb = 5
+            expect(mockQb.getRawOne).toHaveBeenCalledTimes(5)
         })
 
-        it('runs all 4 count queries when feedbackTypes is set', async () => {
-            mockQb.getRawOne.mockResolvedValue({ count: '5' })
+        it('computes totalMessages as totalFeedback + precedingCount when feedbackTypes is set', async () => {
+            mockQb.getRawOne
+                .mockResolvedValueOnce({ count: '630' }) // totalMessages (unused when feedbackTypes active)
+                .mockResolvedValueOnce({ count: '42' }) // totalSessions
+                .mockResolvedValueOnce({ count: '67' }) // totalFeedback
+                .mockResolvedValueOnce({ count: '60' }) // positiveFeedback
+                .mockResolvedValueOnce({ count: '57' }) // precedingCount
 
             const result = await statsService.getChatflowStats(CHATFLOW_ID, WORKSPACE_ID, undefined, undefined, undefined, [
                 ChatMessageRatingType.THUMBS_UP
             ])
 
-            expect(result.totalMessages).toBe(5)
-            expect(result.totalSessions).toBe(5)
-            expect(mockQb.getRawOne).toHaveBeenCalledTimes(4)
+            // totalMessages = totalFeedback(67) + precedingCount(57) = 124
+            expect(result.totalMessages).toBe(124)
+            expect(result.totalSessions).toBe(42)
+            expect(result.totalFeedback).toBe(67)
+            expect(result.positiveFeedback).toBe(60)
+            // 4 main queries + 1 precedingCountQb = 5
+            expect(mockQb.getRawOne).toHaveBeenCalledTimes(5)
         })
 
         it('passes the feedbackTypes to the session subquery', async () => {
