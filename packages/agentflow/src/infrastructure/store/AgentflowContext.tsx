@@ -239,7 +239,7 @@ export function AgentflowStateProvider({ children, initialFlow }: AgentflowState
             // Notify parent of flow change so the duplication is persisted
             if (onFlowChangeRef.current) {
                 const viewport = state.reactFlowInstance?.getViewport() || { x: 0, y: 0, zoom: 1 }
-                onFlowChangeRef.current({ nodes: newNodes, edges: state.edges, viewport })
+                onFlowChangeRef.current({ nodes: normalizeNodes(newNodes), edges: state.edges, viewport })
             }
         },
         [state.nodes, state.edges, state.reactFlowInstance, syncStateUpdate]
