@@ -48,5 +48,6 @@
     "rag",
     "agents",
     "personal-fork"
-  ]
+  ],
+  "_comment": "Personal fork for learning LLM orchestration patterns. Upstream: FlowiseAI/Flowise"
 }
