@@ -44,6 +44,8 @@
     "openai",
     "llm",
     "chatbot",
-    "flowise"
+    "flowise",
+    "rag",
+    "agents"
   ]
 }
