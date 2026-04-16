@@ -21,7 +21,8 @@
     "dev:fresh": "turbo run clean && turbo run dev --parallel --force",
     "lint:fix": "turbo run lint -- --fix",
     "build:no-cache": "turbo run build --force",
-    "check:upstream": "git fetch upstream && git log HEAD..upstream/main --oneline"
+    "check:upstream": "git fetch upstream && git log HEAD..upstream/main --oneline",
+    "sync:upstream": "git fetch upstream && git merge upstream/main --no-edit"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^5.59.0",
@@ -57,5 +58,5 @@
     "personal-fork"
   ],
   "_comment": "Personal fork for learning LLM orchestration patterns. Upstream: FlowiseAI/Flowise",
-  "_notes": "dev:verbose is handy when debugging turbo task ordering or cache misses. dev:fresh clears turbo cache before starting — useful after dependency changes. lint:fix runs eslint with auto-fix across all packages. build:no-cache forces a full rebuild ignoring turbo cache — useful when build artifacts seem stale. check:upstream fetches upstream/main and lists any commits not yet in local HEAD — requires git remote add upstream https://github.com/FlowiseAI/Flowise.git."
+  "_notes": "dev:verbose is handy when debugging turbo task ordering or cache misses. dev:fresh clears turbo cache before starting — useful after dependency changes. lint:fix runs eslint with auto-fix across all packages. build:no-cache forces a full rebuild ignoring turbo cache — useful when build artifacts seem stale. check:upstream fetches upstream/main and lists any commits not yet in local HEAD — requires git remote add upstream https://github.com/FlowiseAI/Flowise.git. sync:upstream merges upstream/main into current branch non-interactively — run check:upstream first to preview incoming changes."
 }
