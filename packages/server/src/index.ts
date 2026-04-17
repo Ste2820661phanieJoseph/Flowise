@@ -81,7 +81,10 @@ const startServer = async () => {
         cors: {
             origin: '*',
             methods: ['GET', 'POST']
-        }
+        },
+        // Increase ping timeout to avoid frequent disconnects on slow connections
+        pingTimeout: 60000,
+        pingInterval: 25000
     })
 
     io.on('connection', (socket) => {
@@ -106,14 +109,4 @@ const startServer = async () => {
 
     process.on('SIGINT', () => {
         logger.info('SIGINT received. Shutting down gracefully...')
-        server.close(() => {
-            logger.info('Server closed.')
-            process.exit(0)
-        })
-    })
-}
-
-startServer().catch((err) => {
-    logger.error('Failed to start server:', err)
-    process.exit(1)
-})
+    
