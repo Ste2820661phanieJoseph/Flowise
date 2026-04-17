@@ -82,9 +82,9 @@ const startServer = async () => {
             origin: '*',
             methods: ['GET', 'POST']
         },
-        // Increase ping timeout to avoid frequent disconnects on slow connections
-        pingTimeout: 60000,
-        pingInterval: 25000
+        // Increased ping timeout to reduce disconnects on slower/local network connections
+        pingTimeout: 120000,
+        pingInterval: 30000
     })
 
     io.on('connection', (socket) => {
@@ -103,10 +103,4 @@ const startServer = async () => {
         logger.info('SIGTERM received. Shutting down gracefully...')
         server.close(() => {
             logger.info('Server closed.')
-            process.exit(0)
-        })
-    })
-
-    process.on('SIGINT', () => {
-        logger.info('SIGINT received. Shutting down gracefully...')
-    
+            
